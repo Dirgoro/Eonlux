@@ -1,0 +1,15 @@
+# Pilha nativa PipeWire (sem o pacote pulseaudio para evitar conflito no Trixie)
+pipewire-audio
+pipewire-pulse
+wireplumber
+pulseaudio-utils
+pavucontrol
+xfce4-pulseaudio-plugin
+
+# Gerenciamento de rede cabeadas e Wi-Fi
+network-manager
+network-manager-gnome
+wpasupplicant
+wireless-tools
+iproute2
+iputils-ping
