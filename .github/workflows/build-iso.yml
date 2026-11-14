@@ -52,6 +52,7 @@ jobs:
           chmod +x auto/*
           find config/hooks -type f \( -name "*.hook.chroot" -o -name "*.hook.binary" \) -exec chmod +x {} +
           find config/includes.chroot/usr/local/bin -type f ! -name ".gitkeep" -exec chmod +x {} +
+          find config/includes.chroot/usr/local/sbin -type f ! -name ".gitkeep" -exec chmod +x {} +
 
           # Garante nós /dev/loop* no container privilegiado para o losetup/xorriso
           for i in $(seq 0 7); do
