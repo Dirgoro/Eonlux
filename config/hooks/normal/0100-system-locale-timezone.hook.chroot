@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+echo "[EonluxOS Hook] Configurando locales pt_BR.UTF-8 e fuso America/Sao_Paulo..."
+
+locale-gen
+update-locale LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8
+
+ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+dpkg-reconfigure -f noninteractive tzdata
