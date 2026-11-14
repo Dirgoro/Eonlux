@@ -3,8 +3,9 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Habilitando LightDM, NetworkManager e sockets PipeWire..."
+echo "[EonluxOS Hook] Habilitando serviços de vídeo, LightDM, NetworkManager e PipeWire..."
 
+systemctl enable eonluxos-display-quirks.service
 systemctl enable lightdm.service
 systemctl enable NetworkManager.service
 
