@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+CONF_DIR="/etc/X11/xorg.conf.d"
+VMWARE_CONF="${CONF_DIR}/20-vmware-modesetting.conf"
+
+VIRT_TYPE="$(systemd-detect-virt 2>/dev/null || true)"
+
+if [ "${VIRT_TYPE}" = "vmware" ]; then
+    mkdir -p "${CONF_DIR}"
+    cat <<'EOF' > "${VMWARE_CONF}"
+Section "Device"
+    Identifier "VMware SVGA"
+    Driver "modesetting"
+    Option "AccelMethod" "none"
+EndSection
+EOF
+else
+    rm -f "${VMWARE_CONF}"
+fi
