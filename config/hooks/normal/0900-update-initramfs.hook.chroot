@@ -2,7 +2,13 @@
 
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export DEBIAN_FRONTEND=noninteractive
 
 echo "[EonluxOS Hook] Atualizando initramfs para todos os kernels instalados..."
+
+if ! command -v update-initramfs >/dev/null 2>&1; then
+    apt-get update
+    apt-get install -y --no-install-recommends initramfs-tools
+fi
 
 update-initramfs -u -k all
