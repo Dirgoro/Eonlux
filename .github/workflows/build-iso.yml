@@ -3,6 +3,10 @@ name: Build EonluxOS 1.0 ISO
 on:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build-iso:
     name: Build Debian Trixie Live ISO (amd64)
@@ -81,7 +85,8 @@ jobs:
             echo "Nenhuma imagem ISO encontrada após o build."
             exit 1
           fi
-          TARGET_ISO="eonluxos-1.0-${GITHUB_REF_NAME//\//-}-amd64.iso"
+          SAFE_REF=$(printf '%s' "${GITHUB_REF_NAME}" | tr '/' '-')
+          TARGET_ISO="eonluxos-1.0-${SAFE_REF}-amd64.iso"
           mv "${ISO_FILE}" "${TARGET_ISO}"
           sha256sum "${TARGET_ISO}" > "${TARGET_ISO}.sha256"
           ls -lh "${TARGET_ISO}" "${TARGET_ISO}.sha256"
