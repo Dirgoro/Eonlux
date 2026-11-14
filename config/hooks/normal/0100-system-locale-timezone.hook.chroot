@@ -2,11 +2,30 @@
 
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export DEBIAN_FRONTEND=noninteractive
+
+echo "[EonluxOS Hook] Verificando pacotes locales e tzdata no chroot..."
+
+if ! command -v locale-gen >/dev/null 2>&1 || [ ! -f /usr/share/zoneinfo/America/Sao_Paulo ]; then
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        -o Dpkg::Options::="--force-confold" \
+        locales tzdata
+fi
 
 echo "[EonluxOS Hook] Configurando locales pt_BR.UTF-8 e fuso America/Sao_Paulo..."
+
+# Garante que pt_BR.UTF-8 esteja habilitado mesmo se o arquivo foi recriado
+if [ -f /etc/locale.gen ]; then
+    sed -i 's/^# *pt_BR.UTF-8 UTF-8/pt_BR.UTF-8 UTF-8/' /etc/locale.gen
+    grep -q '^pt_BR.UTF-8 UTF-8' /etc/locale.gen || echo 'pt_BR.UTF-8 UTF-8' >> /etc/locale.gen
+else
+    printf 'pt_BR.UTF-8 UTF-8\nen_US.UTF-8 UTF-8\n' > /etc/locale.gen
+fi
 
 locale-gen
 update-locale LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8
 
 ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+echo "America/Sao_Paulo" > /etc/timezone
 dpkg-reconfigure -f noninteractive tzdata
