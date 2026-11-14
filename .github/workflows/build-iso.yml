@@ -54,6 +54,10 @@ jobs:
             [ -b "/dev/loop${i}" ] || mknod -m 660 "/dev/loop${i}" b 7 "${i}" || true
           done
 
+          # Exibe estrutura de config/ para auditoria no log do CI
+          echo "=== Estrutura de config/ ==="
+          find config -maxdepth 4 | sort
+
       - name: Configure live-build
         run: |
           lb clean --purge || true
