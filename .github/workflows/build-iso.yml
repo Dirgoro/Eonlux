@@ -1,0 +1,109 @@
+name: Build EonluxOS 1.0 ISO
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    name: Build Debian Trixie Live ISO (amd64)
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+      options: --privileged
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install live-build and hybrid bootloader dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            live-build \
+            debootstrap \
+            squashfs-tools \
+            xorriso \
+            syslinux \
+            isolinux \
+            syslinux-common \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            grub-common \
+            mtools \
+            dosfstools \
+            cpio \
+            gzip \
+            xz-utils \
+            ca-certificates \
+            curl \
+            kmod
+
+      - name: Sanitize line endings (CRLF to LF), permissions and loop devices
+        run: |
+          # Converte CRLF para LF apenas em arquivos de texto, ignorando .git e binários
+          find . -path ./.git -prune -o -type f -exec grep -Il '' {} + | xargs -r sed -i 's/\r$//'
+
+          # Garante permissões de execução em auto/, hooks e binários locais
+          chmod +x auto/*
+          find config/hooks -type f \( -name "*.hook.chroot" -o -name "*.hook.binary" \) -exec chmod +x {} +
+          find config/includes.chroot/usr/local/bin -type f ! -name ".gitkeep" -exec chmod +x {} +
+
+          # Garante nós /dev/loop* no container privilegiado para o losetup/xorriso
+          for i in $(seq 0 7); do
+            [ -b "/dev/loop${i}" ] || mknod -m 660 "/dev/loop${i}" b 7 "${i}" || true
+          done
+
+      - name: Configure live-build
+        run: |
+          lb clean --purge || true
+          lb config
+
+      - name: Build ISO image
+        run: |
+          set -o pipefail
+          if ! lb build 2>&1 | tee build.log; then
+            echo "=================================================================="
+            echo "ERRO NO LB BUILD - 35 LINHAS ANTERIORES A 'Begin unmounting filesystems':"
+            echo "=================================================================="
+            grep -B 35 "Begin unmounting filesystems" build.log || tail -n 50 build.log
+            exit 1
+          fi
+
+      - name: Prepare ISO artifact and SHA256 checksum
+        run: |
+          ISO_FILE=$(ls -1 *.hybrid.iso *.iso 2>/dev/null | head -n 1)
+          if [ -z "${ISO_FILE}" ]; then
+            echo "Nenhuma imagem ISO encontrada após o build."
+            exit 1
+          fi
+          TARGET_ISO="eonluxos-1.0-${GITHUB_REF_NAME//\//-}-amd64.iso"
+          mv "${ISO_FILE}" "${TARGET_ISO}"
+          sha256sum "${TARGET_ISO}" > "${TARGET_ISO}.sha256"
+          ls -lh "${TARGET_ISO}" "${TARGET_ISO}.sha256"
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eonluxos-1.0-iso-${{ github.run_number }}
+          path: |
+            eonluxos-1.0-*.iso
+            eonluxos-1.0-*.iso.sha256
+          retention-days: 7
+
+      - name: Upload build.log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-failure-${{ github.run_number }}
+          path: build.log
+          retention-days: 5
