@@ -1,10 +1,15 @@
-# Servidor gráfico Xorg, Mesa e drivers genéricos/legados (Trixie-safe)
+# Servidor gráfico Xorg, Mesa/EGL e drivers genéricos/legados (Trixie-safe)
 xorg
 xserver-xorg-core
 libgl1-mesa-dri
 libglx-mesa0
+libegl-mesa0
+libgbm1
 xserver-xorg-video-all
 xserver-xorg-input-libinput
+xauth
+x11-xserver-utils
+xinit
 
 # Sessão DBus e PolicyKit moderno (substitui policykit-1 removido no Trixie)
 dbus-x11
@@ -16,6 +21,7 @@ mate-polkit
 # Gerenciador de login e ambiente XFCE puro
 lightdm
 lightdm-gtk-greeter
+accountsservice
 xfce4
 xfce4-terminal
 xfce4-whiskermenu-plugin
