@@ -1,0 +1,13 @@
+[Unit]
+Description=EonluxOS Display Quirks for Legacy and Virtual GPUs
+DefaultDependencies=no
+After=systemd-udev-settle.service
+Before=lightdm.service display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/eonluxos-display-quirks
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
