@@ -16,11 +16,20 @@ MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
 for mon in $MONITORS 0 Virtual-1; do
     BASE="/backdrop/screen0/monitor${mon}/workspace0"
     xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 4 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 3 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
 xfdesktop --reload 2>/dev/null || true
+
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
+pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
+
+# Aguarda renderização final do painel, wallpaper e dock antes de revelar a área de trabalho
+sleep 1
+sudo -n /usr/local/bin/eonluxos-finish-boot.sh 2>/dev/null || true
