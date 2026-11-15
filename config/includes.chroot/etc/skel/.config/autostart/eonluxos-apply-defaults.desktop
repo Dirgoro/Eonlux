@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=EonluxOS Desktop Defaults
+Exec=/usr/local/bin/eonluxos-apply-defaults.sh
+OnlyShowIn=XFCE;
+StartupNotify=false
+Terminal=false
+Hidden=false
