@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+echo "[EonluxOS Hook] Configurando tema Plymouth e atualizando alternatives..."
+
+if [ -d "/usr/share/plymouth/themes/eonluxos" ]; then
+    update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth 200
+    update-alternatives --set default.plymouth /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
+    update-initramfs -u -k all || true
+fi
