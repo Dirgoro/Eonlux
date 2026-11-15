@@ -1,0 +1,5 @@
+# Ambiente visual, gerenciador de docks e temas de boot
+plank
+plymouth
+plymouth-themes
+lightdm-gtk-greeter-settings
