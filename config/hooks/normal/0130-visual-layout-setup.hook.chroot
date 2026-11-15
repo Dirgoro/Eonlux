@@ -3,38 +3,34 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Configurando permissões visuais, wallpaper global e tema Plymouth..."
+echo "[EonluxOS Hook] Renderizando marca SVG, wallpaper global e tema Plymouth..."
 
 chmod +x /usr/local/bin/eonluxos-apply-defaults.sh || true
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 
 mkdir -p /usr/share/backgrounds/xfce
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-stripes.png
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-verticals.png
 
 THEME_DIR="/usr/share/plymouth/themes/eonluxos"
+BRAND_SVG="/usr/share/pixmaps/eonluxos-brand.svg"
+
 if [ -d "$THEME_DIR" ]; then
+    if [ -f "$BRAND_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
+        rsvg-convert -w 680 "$BRAND_SVG" -o "${THEME_DIR}/eonlux-logo.png"
+    fi
+
     python3 - << 'EOF'
 from PIL import Image, ImageDraw
 import os
 
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
 png_path = os.path.join(theme_dir, "eonlux-logo.png")
-jpg_path = os.path.join(theme_dir, "eonlux-logo.jpg")
 
-src_path = png_path if os.path.exists(png_path) else (jpg_path if os.path.exists(jpg_path) else None)
-
-if src_path:
-    img = Image.open(src_path).convert("RGBA")
-    target_w = 680
-    if img.width != target_w:
-        ratio = target_w / float(img.width)
-        img = img.resize((target_w, int(img.height * ratio)), Image.Resampling.LANCZOS)
-    img.save(png_path, "PNG")
-else:
-    img = Image.new("RGBA", (480, 140), (6, 12, 28, 255))
+if not os.path.exists(png_path):
+    img = Image.new("RGBA", (480, 140), (6, 12, 28, 0))
     draw = ImageDraw.Draw(img)
     draw.text((195, 52), "Eonlux Core", fill=(230, 240, 255, 255))
-    draw.text((125, 82), "Novas Possibilidades para grandes historias", fill=(140, 180, 230, 255))
     img.save(png_path, "PNG")
 
 # Moldura da barra de progresso (360x10 px)
