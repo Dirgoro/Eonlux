@@ -1,0 +1,8 @@
+# SSDs NVMe: sem escalonador extra (controle direto na fila do hardware)
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+
+# SSDs SATA/eMMC: mq-deadline garante baixa latência com mínimo overhead de CPU em Atom/Core 2 Duo
+ACTION=="add|change", KERNEL=="sd[a-z]|mmcblk[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+
+# Discos rígidos mecânicos (HDD): bfq para manter responsividade da interface durante I/O
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
