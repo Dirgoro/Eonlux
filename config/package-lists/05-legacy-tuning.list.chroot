@@ -2,6 +2,5 @@
 zram-tools
 earlyoom
 
-# Balanceamento de interrupções de CPU e suporte TRIM para SSD
-irqbalance
+# Suporte TRIM semanal para SSD
 util-linux
