@@ -31,6 +31,8 @@ gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
 
+xfce4-panel -r 2>/dev/null || true
+
 for i in 1 2 3 4 5 6 7 8 9 10; do
     if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
         break
