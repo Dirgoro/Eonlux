@@ -2,8 +2,8 @@
 
 WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
 
-# Aguarda o daemon xfconfd estar pronto
-sleep 1
+# Aguarda o xfconfd e o xfdesktop inicializarem completamente
+sleep 2
 
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
@@ -13,13 +13,19 @@ xfconf-query -c xfce4-desktop -p /desktop-icons/use-custom-font-size -n -t bool 
 xfconf-query -c xfce4-desktop -p /desktop-icons/font-size -n -t double -s 8 2>/dev/null || true
 xfconf-query -c xfce4-desktop -p /desktop-icons/single-click -n -t bool -s true 2>/dev/null || true
 
-# Detecta todos os monitores ativos (ex: Virtual-1, VGA-1, LVDS-1, eDP-1) e aplica o wallpaper sem cortes (style=4)
 MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
-[ -z "$MONITORS" ] && MONITORS="monitor0 Virtual-1"
+[ -z "$MONITORS" ] && MONITORS="0 Virtual-1 VGA-1 HDMI-1 eDP-1 LVDS-1"
 
-for mon in $MONITORS; do
+for mon in $MONITORS 0 Virtual-1; do
     BASE="/backdrop/screen0/monitor${mon}/workspace0"
+    xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 4 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
+
+# Força o redesenho imediato da área de trabalho
+xfdesktop --reload 2>/dev/null || true
+
+# Aplica o tema transparente na dock Plank
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'Transparent' 2>/dev/null || true
