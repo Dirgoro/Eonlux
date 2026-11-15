@@ -6,6 +6,7 @@ xrandr --auto 2>/dev/null || true
 
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
+xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 10" 2>/dev/null || true
 
 xfconf-query -c xfce4-desktop -p /desktop-icons/icon-size -n -t uint -s 30 2>/dev/null || true
 xfconf-query -c xfce4-desktop -p /desktop-icons/use-custom-font-size -n -t bool -s true 2>/dev/null || true
