@@ -1,19 +1,29 @@
 [PlankTheme]
-TopRoundness=12
-BottomRoundness=12
+# Arredondamento suave dos cantos da dock
+TopRoundness=16
+BottomRoundness=16
+
+# Espessura e cor da borda externa (borda sutil em azul elétrico com transparência)
 LineWidth=1
-OuterStrokeColor=56;;139;;253;;95
-FillStartColor=15;;20;;28;;235
-FillEndColor=20;;26;;35;;242
-InnerStrokeColor=255;;255;;255;;22
+OuterStrokeColor=19;;127;;236;;120
+
+# Gradiente de fundo da dock (azul-escuro profundo translúcido idêntico ao do sistema)
+FillStartColor=6;;12;;28;;220
+FillEndColor=10;;20;;42;;235
+
+# Brilho interno sutil
+InnerStrokeColor=255;;255;;255;;30
 
 [PlankDockTheme]
-HorizPadding=10
-TopPadding=4
-BottomPadding=4
+# Espaçamentos internos e margens dos ícones
+HorizPadding=14
+TopPadding=6
+BottomPadding=6
 ItemPadding=8
+
+# Indicador de aplicativo aberto (tamanho e animações)
 IndicatorSize=4
-IconShadowSize=1
+IconShadowSize=2
 UrgentBounceHeight=1.2
 LaunchBounceHeight=0.4
 FadeOpacity=1
@@ -24,7 +34,7 @@ ActiveTime=250
 SlideTime=250
 FadeTime=200
 HideTime=200
-GlowSize=20
+GlowSize=25
 GlowTime=8000
 GlowPulseTime=1500
 UrgentHueShift=120
