@@ -3,12 +3,15 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Configurando scripts de transição, permissões sudoers e Plymouth..."
+echo "[EonluxOS Hook] Mascarando getty@tty1, configurando Plymouth no initramfs e permissões..."
 
 find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 chmod +x /usr/local/bin/*.sh 2>/dev/null || true
 chmod 0440 /etc/sudoers.d/eonluxos-boot 2>/dev/null || true
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+
+# Impede que o terminal de texto tty1 interrompa o Plymouth durante o boot gráfico
+systemctl mask getty@tty1.service 2>/dev/null || true
 
 mkdir -p /usr/share/backgrounds/xfce
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-stripes.png
