@@ -1,0 +1,7 @@
+# Gerenciamento de swap comprimida em RAM e proteção ativa contra OOM
+zram-tools
+earlyoom
+
+# Balanceamento de interrupções de CPU e suporte TRIM para SSD
+irqbalance
+util-linux
