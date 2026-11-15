@@ -24,11 +24,13 @@ for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
+# Configuração da Dock Plank alinhada com o estilo da imagem de referência
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 42 2>/dev/null || true
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
 
 xfce4-panel -r 2>/dev/null || true
