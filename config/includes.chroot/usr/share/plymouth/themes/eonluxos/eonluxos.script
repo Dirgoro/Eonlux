@@ -1,29 +1,81 @@
-# Script Plymouth do EonluxOS Core
-Window.SetBackgroundTopColor(0.015, 0.031, 0.070);
-Window.SetBackgroundBottomColor(0.008, 0.019, 0.047);
+# Sequência visual EonluxOS Core:
+# Fase 1 (Tela 2): Apenas o emblema orbital centralizado sobre fundo #060C1C
+# Fase 2 (Tela 3): Marca Eonlux Core + barra azul animada + frases de carregamento
 
-logo_image = Image("eonlux-logo.png");
-logo_sprite = Sprite(logo_image);
-logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
-logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 28);
+Window.SetBackgroundTopColor(0.023, 0.047, 0.109);
+Window.SetBackgroundBottomColor(0.015, 0.031, 0.078);
 
-progress_box.image = Image("progress_box.png");
-progress_box.sprite = Sprite(progress_box.image);
-progress_box.x = Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetHeight() / 2 + logo_image.GetHeight() / 2 + 10;
-progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
 
-progress_bar.image = Image("progress_bar.png");
-progress_bar.sprite = Sprite();
-progress_bar.sprite.SetPosition(progress_box.x + 2, progress_box.y + 2, 2);
+# Sprite da Tela 2 (somente emblema orbital)
+emblem_img = Image("stage2-emblem.png");
+emblem_sprite = Sprite(emblem_img);
+emblem_sprite.SetX(screen_w / 2 - emblem_img.GetWidth() / 2);
+emblem_sprite.SetY(screen_h / 2 - emblem_img.GetHeight() / 2);
+emblem_sprite.SetZ(10);
+emblem_sprite.SetOpacity(1);
+
+# Sprites da Tela 3 (marca completa + barra + frases)
+brand_img = Image("stage3-brand.png");
+brand_sprite = Sprite(brand_img);
+brand_sprite.SetX(screen_w / 2 - brand_img.GetWidth() / 2);
+brand_sprite.SetY(screen_h / 2 - brand_img.GetHeight() / 2 - 42);
+brand_sprite.SetZ(20);
+brand_sprite.SetOpacity(0);
+
+box_img = Image("progress_box.png");
+box_sprite = Sprite(box_img);
+box_x = screen_w / 2 - box_img.GetWidth() / 2;
+box_y = screen_h / 2 + 68;
+box_sprite.SetPosition(box_x, box_y, 21);
+box_sprite.SetOpacity(0);
+
+bar_img = Image("progress_bar.png");
+bar_sprite = Sprite();
+bar_sprite.SetPosition(box_x, box_y, 22);
+bar_sprite.SetOpacity(0);
+
+caption_img = Image("stage3-caption.png");
+caption_sprite = Sprite(caption_img);
+caption_sprite.SetX(screen_w / 2 - caption_img.GetWidth() / 2);
+caption_sprite.SetY(box_y + 24);
+caption_sprite.SetZ(21);
+caption_sprite.SetOpacity(0);
+
+tick = 0;
+visual_progress = 0.08;
 
 fun refresh_callback ()
 {
-    progress = Plymouth.GetProgress();
-    if (progress < 0.05) progress = 0.05;
-    width = Math.Int((progress_box.image.GetWidth() - 4) * progress);
-    if (width < 1) width = 1;
-    progress_bar.sprite.SetImage(progress_bar.image.Scale(width, progress_box.image.GetHeight() - 4));
+    tick++;
+    sys_prog = Plymouth.GetProgress();
+
+    # Transição automática da Tela 2 (apenas emblema) para Tela 3 (carregamento completo)
+    if (tick > 90 || sys_prog > 0.22) {
+        emblem_sprite.SetOpacity(0);
+        brand_sprite.SetOpacity(1);
+        box_sprite.SetOpacity(1);
+        bar_sprite.SetOpacity(1);
+        caption_sprite.SetOpacity(1);
+    }
+
+    # Interpolação suave para manter a barra sempre animada
+    target = sys_prog;
+    if (target < (tick / 420.0)) {
+        target = tick / 420.0;
+    }
+    if (target > 0.96) {
+        target = 0.96;
+    }
+    if (visual_progress < target) {
+        visual_progress = visual_progress + (target - visual_progress) * 0.12 + 0.002;
+    }
+
+    w = Math.Int(box_img.GetWidth() * visual_progress);
+    if (w < 8) w = 8;
+    if (w > box_img.GetWidth()) w = box_img.GetWidth();
+    bar_sprite.SetImage(bar_img.Scale(w, box_img.GetHeight()));
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
