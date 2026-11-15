@@ -16,5 +16,5 @@ lb config noauto \
   --iso-application "EonluxOS 1.0 Core" \
   --iso-publisher "Eonlux Project" \
   --iso-volume "EONLUXOS_1_0" \
-  --bootappend-live "boot=live components hostname=eonluxos username=user user-fullname=EonluxOS locales=pt_BR.UTF-8 keyboard-layouts=br timezone=America/Sao_Paulo quiet splash loglevel=3 vt.global_cursor_default=0" \
+  --bootappend-live "boot=live components hostname=eonluxos username=user user-fullname=EonluxOS locales=pt_BR.UTF-8 keyboard-layouts=br timezone=America/Sao_Paulo quiet splash plymouth.enable=1 loglevel=3 vt.global_cursor_default=0 video=1024x768-32" \
   "${@}"
