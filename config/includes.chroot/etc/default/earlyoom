@@ -1,0 +1,3 @@
+# Configuração earlyoom do EonluxOS 1.0
+# Envia SIGTERM aos 6% de RAM livre / 10% de swap livre e SIGKILL aos 3% / 5%
+EARLYOOM_ARGS="-r 60 -m 6,3 -s 10,5 --avoid '(^|/)(init|systemd|Xorg|lightdm|xfwm4|xfce4-session|xfce4-panel)$' --prefer '(^|/)(firefox-esr|Isolated Web Co|Web Content)$'"
