@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+echo "[EonluxOS Hook] Ativando serviços de otimização para hardware legado (ZRAM, earlyoom, fstrim, irqbalance)..."
+
+systemctl enable zramswap.service
+systemctl enable earlyoom.service
+systemctl enable fstrim.timer || true
+systemctl enable irqbalance.service || true
