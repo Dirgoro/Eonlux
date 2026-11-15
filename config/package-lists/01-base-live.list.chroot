@@ -1,39 +1,11 @@
-# Infraestrutura essencial de boot Live e criação de usuário
+linux-image-amd64
 live-boot
-live-boot-initramfs-tools
 live-config
 live-config-systemd
 systemd-sysv
-libpam-systemd
-initramfs-tools
-user-setup
-adduser
-whois
 sudo
-
-# Utilitários exigidos pelo live-config sem apt-recommends
-procps
-psmisc
-kbd
-eject
-file
-rsync
-uuid-runtime
-
-# Localização, teclado e utilitários essenciais de sistema
 locales
-keyboard-configuration
 console-setup
-ca-certificates
-curl
-gnupg
-pciutils
-usbutils
-
-# Firmwares de hardware legado (Wi-Fi / Ethernet / GPUs antigas)
+keyboard-configuration
 firmware-linux-free
-firmware-iwlwifi
-firmware-realtek
-firmware-atheros
-firmware-brcm80211
-firmware-misc-nonfree
+ca-certificates
