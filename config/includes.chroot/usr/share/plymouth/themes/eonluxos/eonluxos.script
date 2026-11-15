@@ -1,21 +1,29 @@
 # Script Plymouth do EonluxOS Core
-Window.SetBackground-Color(0.058, 0.078, 0.109);
+Window.SetBackgroundTopColor(0.039, 0.062, 0.118);
+Window.SetBackgroundBottomColor(0.023, 0.039, 0.078);
 
 logo_image = Image("eonlux-logo.png");
 logo_sprite = Sprite(logo_image);
 logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
-logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 40);
+logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 36);
 
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
 progress_box.x = Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetHeight() / 2 + logo_image.GetHeight() / 2;
+progress_box.y = Window.GetHeight() / 2 + logo_image.GetHeight() / 2 + 12;
 progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
 
 progress_bar.image = Image("progress_bar.png");
+progress_bar.sprite = Sprite();
+progress_bar.sprite.SetPosition(progress_box.x + 2, progress_box.y + 2, 2);
+
 fun refresh_callback ()
 {
-    progress_bar.sprite.SetImage(progress_bar.image.Scale(progress_bar.image.GetWidth() * Plymouth.GetProgress(), progress_bar.image.GetHeight()));
+    progress = Plymouth.GetProgress();
+    if (progress < 0.05) progress = 0.05;
+    width = Math.Int((progress_box.image.GetWidth() - 4) * progress);
+    if (width < 1) width = 1;
+    progress_bar.sprite.SetImage(progress_bar.image.Scale(width, progress_box.image.GetHeight() - 4));
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
