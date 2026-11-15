@@ -3,9 +3,10 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Renderizando marca SVG, wallpaper global e tema Plymouth..."
+echo "[EonluxOS Hook] Sanitizando scripts, renderizando SVGs e configurando Plymouth..."
 
-chmod +x /usr/local/bin/eonluxos-apply-defaults.sh || true
+find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
+chmod +x /usr/local/bin/*.sh 2>/dev/null || true
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 
 mkdir -p /usr/share/backgrounds/xfce
@@ -33,13 +34,11 @@ if not os.path.exists(png_path):
     draw.text((195, 52), "Eonlux Core", fill=(230, 240, 255, 255))
     img.save(png_path, "PNG")
 
-# Moldura da barra de progresso (360x10 px)
 box = Image.new("RGBA", (360, 10), (16, 28, 52, 255))
 draw_box = ImageDraw.Draw(box)
 draw_box.rectangle([0, 0, 359, 9], outline=(56, 139, 253, 255), width=1)
 box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
 
-# Preenchimento azul da barra de progresso (356x6 px)
 bar = Image.new("RGBA", (356, 6), (19, 127, 236, 255))
 bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
 EOF
