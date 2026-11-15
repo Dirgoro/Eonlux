@@ -1,14 +1,10 @@
-# Sequência visual EonluxOS Core:
-# Fase 1 (Tela 2): Apenas o emblema orbital centralizado sobre fundo #060C1C
-# Fase 2 (Tela 3): Marca Eonlux Core + barra azul animada + frases de carregamento
-
 Window.SetBackgroundTopColor(0.023, 0.047, 0.109);
 Window.SetBackgroundBottomColor(0.015, 0.031, 0.078);
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
-# Sprite da Tela 2 (somente emblema orbital)
+# Tela 2: apenas o emblema orbital
 emblem_img = Image("stage2-emblem.png");
 emblem_sprite = Sprite(emblem_img);
 emblem_sprite.SetX(screen_w / 2 - emblem_img.GetWidth() / 2);
@@ -16,7 +12,7 @@ emblem_sprite.SetY(screen_h / 2 - emblem_img.GetHeight() / 2);
 emblem_sprite.SetZ(10);
 emblem_sprite.SetOpacity(1);
 
-# Sprites da Tela 3 (marca completa + barra + frases)
+# Tela 3: marca Eonlux Core + barra animada + frases
 brand_img = Image("stage3-brand.png");
 brand_sprite = Sprite(brand_img);
 brand_sprite.SetX(screen_w / 2 - brand_img.GetWidth() / 2);
@@ -44,15 +40,35 @@ caption_sprite.SetZ(21);
 caption_sprite.SetOpacity(0);
 
 tick = 0;
-visual_progress = 0.08;
+sys_progress = 0.0;
+visual_progress = 0.04;
+force_complete = 0;
+
+fun progress_callback (duration, progress)
+{
+    if (progress > sys_progress) {
+        sys_progress = progress;
+    }
+}
+
+fun status_callback (status)
+{
+    if (status == "complete") {
+        force_complete = 1;
+        sys_progress = 1.0;
+    }
+}
 
 fun refresh_callback ()
 {
     tick++;
-    sys_prog = Plymouth.GetProgress();
+    p = Plymouth.GetProgress();
+    if (p > sys_progress) {
+        sys_progress = p;
+    }
 
-    # Transição automática da Tela 2 (apenas emblema) para Tela 3 (carregamento completo)
-    if (tick > 90 || sys_prog > 0.22) {
+    # Transição da Tela 2 (somente emblema) para Tela 3 (barra de progresso)
+    if (tick > 65 || sys_progress > 0.10) {
         emblem_sprite.SetOpacity(0);
         brand_sprite.SetOpacity(1);
         box_sprite.SetOpacity(1);
@@ -60,16 +76,25 @@ fun refresh_callback ()
         caption_sprite.SetOpacity(1);
     }
 
-    # Interpolação suave para manter a barra sempre animada
-    target = sys_prog;
-    if (target < (tick / 420.0)) {
-        target = tick / 420.0;
+    # Combina progresso do systemd com avanço contínuo durante montagem do squashfs/X11
+    target = sys_progress;
+    stage_floor = tick / 260.0;
+    if (stage_floor > 0.92 && force_complete == 0) {
+        stage_floor = 0.92;
     }
-    if (target > 0.96) {
-        target = 0.96;
+    if (target < stage_floor) {
+        target = stage_floor;
     }
+    if (force_complete == 1) {
+        target = 1.0;
+    }
+
     if (visual_progress < target) {
-        visual_progress = visual_progress + (target - visual_progress) * 0.12 + 0.002;
+        step = (target - visual_progress) * 0.22 + 0.004;
+        visual_progress = visual_progress + step;
+        if (visual_progress > target) {
+            visual_progress = target;
+        }
     }
 
     w = Math.Int(box_img.GetWidth() * visual_progress);
@@ -78,4 +103,6 @@ fun refresh_callback ()
     bar_sprite.SetImage(bar_img.Scale(w, box_img.GetHeight()));
 }
 
+Plymouth.SetBootProgressFunction(progress_callback);
+Plymouth.SetUpdateStatusFunction(status_callback);
 Plymouth.SetRefreshFunction(refresh_callback);
