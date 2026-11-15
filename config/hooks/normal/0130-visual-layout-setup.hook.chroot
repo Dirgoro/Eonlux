@@ -3,7 +3,7 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Sanitizando scripts, renderizando SVGs e configurando Plymouth..."
+echo "[EonluxOS Hook] Gerando ativos do Plymouth (Telas 2 e 3) e atualizando initramfs..."
 
 find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 chmod +x /usr/local/bin/*.sh 2>/dev/null || true
@@ -14,33 +14,56 @@ ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgroun
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-verticals.png
 
 THEME_DIR="/usr/share/plymouth/themes/eonluxos"
+LOGO_SVG="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 BRAND_SVG="/usr/share/pixmaps/eonluxos-brand.svg"
 
 if [ -d "$THEME_DIR" ]; then
+    if [ -f "$LOGO_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
+        rsvg-convert -w 136 "$LOGO_SVG" -o "${THEME_DIR}/stage2-emblem.png"
+    fi
     if [ -f "$BRAND_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
-        rsvg-convert -w 680 "$BRAND_SVG" -o "${THEME_DIR}/eonlux-logo.png"
+        rsvg-convert -w 540 "$BRAND_SVG" -o "${THEME_DIR}/stage3-brand-raw.png"
     fi
 
     python3 - << 'EOF'
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import os
 
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
-png_path = os.path.join(theme_dir, "eonlux-logo.png")
 
-if not os.path.exists(png_path):
-    img = Image.new("RGBA", (480, 140), (6, 12, 28, 0))
-    draw = ImageDraw.Draw(img)
-    draw.text((195, 52), "Eonlux Core", fill=(230, 240, 255, 255))
-    img.save(png_path, "PNG")
+# Recorta a parte inferior do slogan do SVG para evitar duplicidade com as frases da Tela 3
+raw_brand = os.path.join(theme_dir, "stage3-brand-raw.png")
+if os.path.exists(raw_brand):
+    im = Image.open(raw_brand).convert("RGBA")
+    crop_h = int(im.height * 0.74)
+    im.crop((0, 0, im.width, crop_h)).save(os.path.join(theme_dir, "stage3-brand.png"), "PNG")
 
-box = Image.new("RGBA", (360, 10), (16, 28, 52, 255))
-draw_box = ImageDraw.Draw(box)
-draw_box.rectangle([0, 0, 359, 9], outline=(56, 139, 253, 255), width=1)
+# Barra de progresso fina e moderna (360x6 px) igual à Tela 3
+box = Image.new("RGBA", (360, 6), (26, 39, 64, 255))
 box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
 
-bar = Image.new("RGBA", (356, 6), (19, 127, 236, 255))
+bar = Image.new("RGBA", (360, 6), (19, 127, 236, 255))
 bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
+
+# Renderiza as duas frases exatas da Tela 3 com fontes Noto Sans
+cap = Image.new("RGBA", (620, 74), (0, 0, 0, 0))
+draw = ImageDraw.Draw(cap)
+try:
+    f_bold = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", 19)
+    f_reg = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", 14)
+except Exception:
+    f_bold = ImageFont.load_default()
+    f_reg = ImageFont.load_default()
+
+t1 = "Seu equipamento ganhando nova vida..."
+t2 = "Otimizando desempenho, memória e interface para você"
+
+w1 = draw.textbbox((0, 0), t1, font=f_bold)[2]
+w2 = draw.textbbox((0, 0), t2, font=f_reg)[2]
+
+draw.text(((620 - w1) // 2, 6), t1, font=f_bold, fill=(240, 246, 255, 255))
+draw.text(((620 - w2) // 2, 38), t2, font=f_reg, fill=(168, 184, 208, 255))
+cap.save(os.path.join(theme_dir, "stage3-caption.png"), "PNG")
 EOF
 
     update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "${THEME_DIR}/eonluxos.plymouth" 200
