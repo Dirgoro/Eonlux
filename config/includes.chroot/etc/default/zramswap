@@ -1,4 +1,4 @@
 # Configuração ZRAM do EonluxOS 1.0 (otimizada para hardware legado de 2 GB RAM)
-ALGO=zstd
+ALGO=lz4
 PERCENT=50
 PRIORITY=100
