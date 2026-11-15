@@ -42,7 +42,7 @@
     <property name="plugin-6" type="string" value="power-manager-plugin"/>
     <property name="plugin-7" type="string" value="clock">
       <property name="digital-layout" type="uint" value="3"/>
-      <property name="digital-time-format" type="string" value="%H:%M"/>
+      <property name="digital-time-format" type="string" value="%a, %d de %b %H:%M"/>
     </property>
   </property>
 </channel>
