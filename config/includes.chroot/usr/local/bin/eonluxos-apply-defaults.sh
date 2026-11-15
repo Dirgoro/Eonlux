@@ -18,7 +18,7 @@ MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
 for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     BASE="/backdrop/screen0/monitor${mon}/workspace0"
     xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 5 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 2 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
