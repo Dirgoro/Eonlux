@@ -13,8 +13,8 @@ lb config noauto \
   --bootloaders "syslinux,grub-efi" \
   --debian-installer false \
   --memtest none \
-  --iso-application "EonluxOS 1.0" \
+  --iso-application "EonluxOS 1.0 Core" \
   --iso-publisher "Eonlux Project" \
-  --iso-volume "EonluxOS 1.0" \
-  --bootappend-live "boot=live components locales=pt_BR.UTF-8 keyboard-layouts=br timezone=America/Sao_Paulo quiet splash" \
+  --iso-volume "EONLUXOS_1_0" \
+  --bootappend-live "boot=live components locales=pt_BR.UTF-8 keyboard-layouts=br timezone=America/Sao_Paulo quiet splash loglevel=3" \
   "${@}"
