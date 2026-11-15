@@ -18,7 +18,7 @@ MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
 for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     BASE="/backdrop/screen0/monitor${mon}/workspace0"
     xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 3 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 5 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
@@ -30,7 +30,6 @@ gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
 
-# Aguarda o xfdesktop e o plank concluírem a renderização no vt7 antes de levantar a cortina
 for i in 1 2 3 4 5 6 7 8 9 10; do
     if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
         break
