@@ -3,10 +3,11 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Gerando ativos do Plymouth (Telas 2 e 3) e atualizando initramfs..."
+echo "[EonluxOS Hook] Configurando scripts de transição, permissões sudoers e Plymouth..."
 
 find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 chmod +x /usr/local/bin/*.sh 2>/dev/null || true
+chmod 0440 /etc/sudoers.d/eonluxos-boot 2>/dev/null || true
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 
 mkdir -p /usr/share/backgrounds/xfce
@@ -31,21 +32,18 @@ import os
 
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
 
-# Recorta a parte inferior do slogan do SVG para evitar duplicidade com as frases da Tela 3
 raw_brand = os.path.join(theme_dir, "stage3-brand-raw.png")
 if os.path.exists(raw_brand):
     im = Image.open(raw_brand).convert("RGBA")
     crop_h = int(im.height * 0.74)
     im.crop((0, 0, im.width, crop_h)).save(os.path.join(theme_dir, "stage3-brand.png"), "PNG")
 
-# Barra de progresso fina e moderna (360x6 px) igual à Tela 3
 box = Image.new("RGBA", (360, 6), (26, 39, 64, 255))
 box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
 
 bar = Image.new("RGBA", (360, 6), (19, 127, 236, 255))
 bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
 
-# Renderiza as duas frases exatas da Tela 3 com fontes Noto Sans
 cap = Image.new("RGBA", (620, 74), (0, 0, 0, 0))
 draw = ImageDraw.Draw(cap)
 try:
