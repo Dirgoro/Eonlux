@@ -11,9 +11,25 @@ systemctl enable fstrim.timer || true
 systemctl enable irqbalance.service || true
 
 # Desativa monitores de volume GVFS não essenciais para poupar RAM (mantém udisks2 para pens USB e discos)
+mkdir -p /etc/systemd/user
 systemctl --global mask \
     gvfs-afc-volume-monitor.service \
     gvfs-goa-volume-monitor.service \
     gvfs-gphoto2-volume-monitor.service || true
+
+# Oculta entradas de autostart XDG pesadas ou dispensáveis em hardware legado
+for desktop_file in \
+    at-spi-dbus-bus.desktop \
+    xiccd.desktop \
+    xfce4-screensaver.desktop \
+    gnome-keyring-pkcs11.desktop \
+    gnome-keyring-secrets.desktop \
+    gnome-keyring-ssh.desktop; do
+    if [ -f "/etc/xdg/autostart/${desktop_file}" ]; then
+        grep -q '^Hidden=' "/etc/xdg/autostart/${desktop_file}" \
+            && sed -i 's/^Hidden=.*/Hidden=true/' "/etc/xdg/autostart/${desktop_file}" \
+            || echo 'Hidden=true' >> "/etc/xdg/autostart/${desktop_file}"
+    fi
+done
 
 chown -R root:root /etc/skel
