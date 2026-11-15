@@ -3,14 +3,13 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Ativando serviços de otimização para hardware legado (ZRAM, earlyoom, fstrim, irqbalance)..."
+echo "[EonluxOS Hook] Ativando serviços de otimização para hardware legado (ZRAM, earlyoom, fstrim)..."
 
 systemctl enable zramswap.service
 systemctl enable earlyoom.service
 systemctl enable fstrim.timer || true
-systemctl enable irqbalance.service || true
 
-# Desativa monitores de volume GVFS não essenciais para poupar RAM (mantém udisks2 para pens USB e discos)
+# Desativa monitores de volume GVFS não essenciais para poupar RAM (mantém udisks2 para pendrives e discos)
 mkdir -p /etc/systemd/user
 systemctl --global mask \
     gvfs-afc-volume-monitor.service \
