@@ -3,11 +3,12 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Configurando wallpaper global e tema Plymouth..."
+echo "[EonluxOS Hook] Aplicando wallpaper global XFCE e tema Plymouth..."
 
-# Define o wallpaper oficial como fallback global do desktop-base/xfdesktop para qualquer saída de vídeo
-mkdir -p /usr/share/images/desktop-base
-ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/images/desktop-base/default
+# Substitui o wallpaper padrão interno do XFCE para funcionar em qualquer nome de monitor
+mkdir -p /usr/share/backgrounds/xfce
+ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-stripes.png
+ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-verticals.png
 
 THEME_DIR="/usr/share/plymouth/themes/eonluxos"
 if [ -d "$THEME_DIR" ]; then
@@ -21,29 +22,29 @@ logo_path = os.path.join(theme_dir, "eonlux-logo.png")
 if not os.path.exists(logo_path):
     img = Image.new("RGBA", (420, 120), (10, 16, 30, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((120, 48), "Eonlux Core", fill=(230, 240, 255, 255))
-    img.save(logo_path)
+    draw.text((135, 48), "Eonlux Core", fill=(230, 240, 255, 255))
+    img.save(logo_path, "PNG")
 else:
     img = Image.open(logo_path).convert("RGBA")
     if img.width > 520:
         ratio = 520 / float(img.width)
         img = img.resize((520, int(img.height * ratio)), Image.Resampling.LANCZOS)
-        img.save(logo_path)
+    img.save(logo_path, "PNG")
 
 # Moldura da barra de progresso (320x10 px)
 box = Image.new("RGBA", (320, 10), (25, 38, 64, 255))
 draw_box = ImageDraw.Draw(box)
 draw_box.rectangle([0, 0, 319, 9], outline=(56, 139, 253, 255), width=1)
-box.save(os.path.join(theme_dir, "progress_box.png"))
+box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
 
-# Preenchimento azul luminoso da barra de progresso (316x6 px)
+# Preenchimento azul da barra de progresso (316x6 px)
 bar = Image.new("RGBA", (316, 6), (19, 127, 236, 255))
-bar.save(os.path.join(theme_dir, "progress_bar.png"))
+bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
 EOF
 
     update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "${THEME_DIR}/eonluxos.plymouth" 200
     update-alternatives --set default.plymouth "${THEME_DIR}/eonluxos.plymouth"
-    update-initramfs -u -k all || true
+    plymouth-set-default-theme -R eonluxos || update-initramfs -u -k all || true
 fi
 
 chown -R root:root /etc/skel
