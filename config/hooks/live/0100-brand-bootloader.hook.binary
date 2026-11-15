@@ -2,78 +2,34 @@
 
 set -e
 
-echo "[EonluxOS Binary Hook] Construindo tema visual da Tela 1 (Isolinux / GRUB)..."
+echo "[EonluxOS Binary Hook] Gerando eonlux-splash.png para Isolinux/GRUB..."
 
 BRAND_PNG="chroot/usr/share/plymouth/themes/eonluxos/stage3-brand.png"
 if [ -f "$BRAND_PNG" ] && command -v python3 >/dev/null 2>&1; then
     python3 - << 'EOF'
 from PIL import Image, ImageDraw
-import glob
+import glob, os
 
 brand = Image.open("chroot/usr/share/plymouth/themes/eonluxos/stage3-brand.png").convert("RGBA")
 
-# Cria imagem 640x480 com gradiente azul-marinho escuro (#060C1C)
 canvas = Image.new("RGBA", (640, 480), (6, 12, 28, 255))
 draw = ImageDraw.Draw(canvas)
 
-# Centraliza emblema + logo Eonlux Core na parte superior (y=18..175)
 target_w = 340
 ratio = target_w / float(brand.width)
 brand_resized = brand.resize((target_w, int(brand.height * ratio)), Image.Resampling.LANCZOS)
 canvas.alpha_composite(brand_resized, ((640 - brand_resized.width) // 2, 18))
 
-# Desenha moldura dupla igual à Tela 1 ao redor da área de menu (x=60..580, y=188..370)
 draw.rectangle([60, 188, 580, 370], outline=(85, 110, 145, 255), width=1)
 draw.line([60, 214, 580, 214], fill=(85, 110, 145, 255), width=1)
 
 final_splash = canvas.convert("RGB")
+
+if os.path.isdir("binary/isolinux"):
+    final_splash.save("binary/isolinux/eonlux-splash.png", "PNG")
+    final_splash.save("binary/isolinux/splash.png", "PNG")
+
 for path in glob.glob("binary/**/splash.png", recursive=True):
     final_splash.save(path, "PNG")
 EOF
-fi
-
-# Sobrescreve configurações do menu Isolinux (BIOS) para usar o layout e cores da Tela 1
-if [ -d "binary/isolinux" ]; then
-    cat > binary/isolinux/stdmenu.cfg << 'EOF'
-menu background splash.png
-menu title EonluxOS 1.0 Core
-menu color screen       37;40      #80ffffff #00000000 std
-menu color border       30;44      #00000000 #00000000 none
-menu color title        1;36;44    #ff38bdf8 #00000000 std
-menu color sel          7;37;40    #ffffffff #ff137fec all
-menu color unsel        37;44      #ffe2e8f0 #00000000 std
-menu color help         37;40      #ff94a3b8 #00000000 none
-menu color timeout_msg  37;40      #ff94a3b8 #00000000 none
-menu color timeout      1;37;40    #ff38bdf8 #00000000 none
-menu color msg07        37;40      #ff94a3b8 #00000000 std
-menu color tabmsg       31;40      #ff94a3b8 #00000000 none
-
-menu vshift 11
-menu hshift 8
-menu width 62
-menu margin 2
-menu rows 5
-menu tabmsgrow 24
-menu cmdlinerow 24
-menu timeoutrow 22
-menu helpmsgrow 25
-menu tabmsg Pressione [Tab] para editar opcoes de boot
-EOF
-
-    find binary/isolinux -type f -name "*.cfg" | while read -r cfg; do
-        sed -i 's/Debian GNU\/Linux 13 (trixie)/EonluxOS 1.0 Core/g' "$cfg" || true
-        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
-        sed -i 's/Live system (amd64 fail-safe mode)/EonluxOS (Modo de Seguranca)/g' "$cfg" || true
-        sed -i 's/Live system (amd64)/Iniciar EonluxOS (Modo Live)/g' "$cfg" || true
-    done
-fi
-
-# Atualiza também títulos no GRUB (UEFI)
-if [ -d "binary/boot/grub" ]; then
-    find binary/boot/grub -type f -name "*.cfg" | while read -r cfg; do
-        sed -i 's/Debian GNU\/Linux 13 (trixie)/EonluxOS 1.0 Core/g' "$cfg" || true
-        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
-        sed -i 's/Live system (amd64 fail-safe mode)/EonluxOS (Modo de Seguranca)/g' "$cfg" || true
-        sed -i 's/Live system (amd64)/Iniciar EonluxOS (Modo Live)/g' "$cfg" || true
-    done
 fi
