@@ -5,12 +5,9 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 echo "[EonluxOS Hook] Habilitando serviços de vídeo, LightDM, NetworkManager e PipeWire..."
 
-systemctl enable eonluxos-display-quirks.service
+systemctl enable eonluxos-display-quirks.service || true
 systemctl enable lightdm.service
 systemctl enable NetworkManager.service
 
-# Habilita a pilha PipeWire globalmente para sessões de usuário
+# Habilita PipeWire e WirePlumber globalmente para todos os utilizadores
 systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service || true
-
-# Garante propriedade correta em /etc/skel (sem tocar em /home/user)
-chown -R root:root /etc/skel
