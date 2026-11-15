@@ -1,0 +1,10 @@
+drm
+drm_kms_helper
+simpledrm
+vmwgfx
+virtio_gpu
+bochs
+i915
+amdgpu
+radeon
+nouveau
