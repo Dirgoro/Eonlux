@@ -21,16 +21,14 @@ mate-polkit
 # Gerenciador de login e ambiente XFCE puro
 lightdm
 lightdm-gtk-greeter
-accountsservice
 xfce4
 xfce4-terminal
 xfce4-whiskermenu-plugin
 xfce4-power-manager
+xfce4-power-manager-plugins
 xfce4-notifyd
 thunar-volman
 gvfs
-gvfs-backends
-tumbler
 xdg-utils
 xdg-user-dirs
 
