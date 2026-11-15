@@ -8,6 +8,4 @@ echo "[EonluxOS Hook] Habilitando serviços de vídeo, LightDM, NetworkManager e
 systemctl enable eonluxos-display-quirks.service || true
 systemctl enable lightdm.service
 systemctl enable NetworkManager.service
-
-# Habilita PipeWire e WirePlumber globalmente para todos os utilizadores
 systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service || true
