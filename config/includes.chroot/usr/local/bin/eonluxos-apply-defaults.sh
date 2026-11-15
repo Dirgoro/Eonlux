@@ -2,7 +2,6 @@
 
 WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
 
-# Ajusta automaticamente cada saída de vídeo para a resolução nativa (EDID) do monitor
 xrandr --auto 2>/dev/null || true
 
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
@@ -24,8 +23,6 @@ for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
-xfdesktop --reload 2>/dev/null || true
-
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
@@ -33,5 +30,15 @@ gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
 
-sleep 1
+# Aguarda o xfdesktop e o plank concluírem a renderização no vt7 antes de levantar a cortina
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
+        break
+    fi
+    sleep 0.5
+done
+
+xfdesktop --reload 2>/dev/null || true
+sleep 1.2
+
 sudo -n /usr/local/bin/eonluxos-finish-boot.sh 2>/dev/null || true
