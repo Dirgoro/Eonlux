@@ -2,9 +2,6 @@
 
 WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
 
-# Aguarda o xfconfd e o xfdesktop inicializarem completamente
-sleep 2
-
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
 
@@ -24,8 +21,6 @@ for mon in $MONITORS 0 Virtual-1; do
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
-# Força o redesenho imediato da área de trabalho
 xfdesktop --reload 2>/dev/null || true
-
-# Aplica o tema transparente na dock Plank
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'Transparent' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
