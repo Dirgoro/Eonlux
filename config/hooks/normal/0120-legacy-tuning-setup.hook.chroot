@@ -9,3 +9,11 @@ systemctl enable zramswap.service
 systemctl enable earlyoom.service
 systemctl enable fstrim.timer || true
 systemctl enable irqbalance.service || true
+
+# Desativa monitores de volume GVFS não essenciais para poupar RAM (mantém udisks2 para pens USB e discos)
+systemctl --global mask \
+    gvfs-afc-volume-monitor.service \
+    gvfs-goa-volume-monitor.service \
+    gvfs-gphoto2-volume-monitor.service || true
+
+chown -R root:root /etc/skel
