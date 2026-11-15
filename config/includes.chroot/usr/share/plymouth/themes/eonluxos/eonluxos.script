@@ -4,7 +4,6 @@ Window.SetBackgroundBottomColor(0.015, 0.031, 0.078);
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
-# Tela 2: apenas o emblema orbital
 emblem_img = Image("stage2-emblem.png");
 emblem_sprite = Sprite(emblem_img);
 emblem_sprite.SetX(screen_w / 2 - emblem_img.GetWidth() / 2);
@@ -12,7 +11,6 @@ emblem_sprite.SetY(screen_h / 2 - emblem_img.GetHeight() / 2);
 emblem_sprite.SetZ(10);
 emblem_sprite.SetOpacity(1);
 
-# Tela 3: marca Eonlux Core + barra animada + frases
 brand_img = Image("stage3-brand.png");
 brand_sprite = Sprite(brand_img);
 brand_sprite.SetX(screen_w / 2 - brand_img.GetWidth() / 2);
@@ -40,9 +38,8 @@ caption_sprite.SetZ(21);
 caption_sprite.SetOpacity(0);
 
 tick = 0;
-sys_progress = 0.0;
-visual_progress = 0.04;
-force_complete = 0;
+sys_progress = 0.05;
+visual_progress = 0.05;
 
 fun progress_callback (duration, progress)
 {
@@ -51,24 +48,12 @@ fun progress_callback (duration, progress)
     }
 }
 
-fun status_callback (status)
-{
-    if (status == "complete") {
-        force_complete = 1;
-        sys_progress = 1.0;
-    }
-}
-
 fun refresh_callback ()
 {
     tick++;
-    p = Plymouth.GetProgress();
-    if (p > sys_progress) {
-        sys_progress = p;
-    }
-
-    # Transição da Tela 2 (somente emblema) para Tela 3 (carregamento completo)
-    if (tick > 75 || sys_progress > 0.12) {
+    
+    # Transição suave do emblema isolado para a marca completa + barra
+    if (tick > 55 || sys_progress > 0.15) {
         emblem_sprite.SetOpacity(0);
         brand_sprite.SetOpacity(1);
         box_sprite.SetOpacity(1);
@@ -76,28 +61,21 @@ fun refresh_callback ()
         caption_sprite.SetOpacity(1);
     }
 
-    # Avanço contínuo sincronizado desde o initramfs até a montagem do XFCE + Plank
-    target = sys_progress * 0.75;
-    stage_floor = tick / 750.0;
-    if (stage_floor > 0.94 && force_complete == 0) {
-        stage_floor = 0.94;
+    # Garante avanço contínuo e orgânico da barra até 100%
+    target = sys_progress;
+    min_progress = tick / 180.0;
+    if (target < min_progress) {
+        target = min_progress;
     }
-    if (target < stage_floor) {
-        target = stage_floor;
-    }
-    if (force_complete == 1) {
+    if (target > 1.0) {
         target = 1.0;
     }
 
     if (visual_progress < target) {
-        step = (target - visual_progress) * 0.18 + 0.002;
-        if (force_complete == 1) {
-            step = 0.25;
-        }
-        visual_progress = visual_progress + step;
-        if (visual_progress > target) {
-            visual_progress = target;
-        }
+        visual_progress = visual_progress + (target - visual_progress) * 0.15 + 0.003;
+    }
+    if (visual_progress > 1.0) {
+        visual_progress = 1.0;
     }
 
     w = Math.Int(box_img.GetWidth() * visual_progress);
@@ -107,5 +85,4 @@ fun refresh_callback ()
 }
 
 Plymouth.SetBootProgressFunction(progress_callback);
-Plymouth.SetUpdateStatusFunction(status_callback);
 Plymouth.SetRefreshFunction(refresh_callback);
