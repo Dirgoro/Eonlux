@@ -1,1 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="800" height="420">
+  <defs>
+    <linearGradient id="ringTop" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0A3D91" />
+      <stop offset="55%" stop-color="#1E88E5" />
+      <stop offset="100%" stop-color="#E3F2FD" />
+    </linearGradient>
+    <linearGradient id="ringBottom" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0D47A1" />
+      <stop offset="55%" stop-color="#1976D2" />
+      <stop offset="100%" stop-color="#BBDEFB" />
+    </linearGradient>
+    <linearGradient id="waveRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="45%" stop-color="#4FC3F7" />
+      <stop offset="75%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#00B0FF" />
+    </linearGradient>
+    <linearGradient id="orbitStroke" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#42A5F5" stop-opacity="0.85" />
+      <stop offset="50%" stop-color="#1565C0" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#80D8FF" stop-opacity="0.95" />
+    </linearGradient>
+    <radialGradient id="starFlare" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+      <stop offset="30%" stop-color="#40C4FF" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0091EA" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#DCEEFF" />
+      <stop offset="100%" stop-color="#82B1FF" />
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#B3E5FC" />
+      <stop offset="100%" stop-color="#4FC3F7" />
+    </linearGradient>
+    <linearGradient id="dividerLine" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#4FC3F7" stop-opacity="0" />
+      <stop offset="50%" stop-color="#4FC3F7" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#4FC3F7" stop-opacity="0" />
+    </linearGradient>
+  </defs>
 
+  <!-- Emblema superior centralizado -->
+  <g transform="translate(292, 14) scale(0.84)">
+    <ellipse cx="128" cy="128" rx="112" ry="44" transform="rotate(-24 128 128)" fill="none" stroke="url(#orbitStroke)" stroke-width="3.2" />
+    <path d="M 56 128 A 72 72 0 0 1 196 105 L 176 114 A 52 52 0 0 0 76 128 Z" fill="url(#ringTop)" />
+    <path d="M 200 128 A 72 72 0 0 1 60 151 L 80 142 A 52 52 0 0 0 180 128 Z" fill="url(#ringBottom)" />
+    <path d="M 55 126 C 72 154, 108 152, 134 132 C 156 115, 182 104, 204 114 C 186 92, 152 94, 124 114 C 100 132, 74 138, 55 126 Z" fill="url(#waveRibbon)" />
+    <circle cx="202" cy="112" r="22" fill="url(#starFlare)" />
+    <path d="M 202 96 L 204.5 109.5 L 218 112 L 204.5 114.5 L 202 128 L 199.5 114.5 L 186 112 L 199.5 109.5 Z" fill="#FFFFFF" />
+  </g>
+
+  <!-- Tipografia principal "Eonlux" -->
+  <text x="152" y="294" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="88" font-weight="700" letter-spacing="2" fill="url(#wordmarkGrad)">Eonlux</text>
+
+  <!-- Sub-marca "Core" alinhada acima de "ux" -->
+  <text x="488" y="250" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="34" font-weight="700" letter-spacing="1.5" fill="url(#coreGrad)">Core</text>
+
+  <!-- Linha divisória com brilho central -->
+  <rect x="160" y="316" width="480" height="2" fill="url(#dividerLine)" />
+  <path d="M 400 307 L 403 315 L 411 317 L 403 319 L 400 327 L 397 319 L 389 317 L 397 315 Z" fill="#80D8FF" />
+
+  <!-- Slogan oficial -->
+  <text x="400" y="358" text-anchor="middle" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="20" font-weight="400" letter-spacing="3.5" fill="#E3F2FD">Novas Possibilidades para grandes histórias</text>
+</svg>
