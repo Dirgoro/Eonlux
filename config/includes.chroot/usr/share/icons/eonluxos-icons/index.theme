@@ -1,0 +1,5 @@
+[Icon Theme]
+Name=EonluxOS
+Comment=Ícones oficiais do EonluxOS Core
+Inherits=Papirus-Dark,hicolor
+Directories=scalable/apps,scalable/places
