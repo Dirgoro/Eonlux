@@ -52,7 +52,6 @@ fun refresh_callback ()
 {
     tick++;
     
-    # Transição suave do emblema isolado para a marca completa + barra
     if (tick > 55 || sys_progress > 0.15) {
         emblem_sprite.SetOpacity(0);
         brand_sprite.SetOpacity(1);
@@ -61,7 +60,6 @@ fun refresh_callback ()
         caption_sprite.SetOpacity(1);
     }
 
-    # Garante avanço contínuo e orgânico da barra até 100%
     target = sys_progress;
     min_progress = tick / 180.0;
     if (target < min_progress) {
