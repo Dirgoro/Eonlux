@@ -3,9 +3,10 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Aplicando wallpaper global XFCE e tema Plymouth..."
+echo "[EonluxOS Hook] Configurando permissões visuais, wallpaper global e tema Plymouth..."
 
-# Substitui o wallpaper padrão interno do XFCE para funcionar em qualquer nome de monitor
+chmod +x /usr/local/bin/eonluxos-apply-defaults.sh || true
+
 mkdir -p /usr/share/backgrounds/xfce
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-stripes.png
 ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-verticals.png
@@ -17,28 +18,33 @@ from PIL import Image, ImageDraw
 import os
 
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
-logo_path = os.path.join(theme_dir, "eonlux-logo.png")
+png_path = os.path.join(theme_dir, "eonlux-logo.png")
+jpg_path = os.path.join(theme_dir, "eonlux-logo.jpg")
 
-if not os.path.exists(logo_path):
-    img = Image.new("RGBA", (420, 120), (10, 16, 30, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((135, 48), "Eonlux Core", fill=(230, 240, 255, 255))
-    img.save(logo_path, "PNG")
+src_path = png_path if os.path.exists(png_path) else (jpg_path if os.path.exists(jpg_path) else None)
+
+if src_path:
+    img = Image.open(src_path).convert("RGBA")
+    target_w = 680
+    if img.width != target_w:
+        ratio = target_w / float(img.width)
+        img = img.resize((target_w, int(img.height * ratio)), Image.Resampling.LANCZOS)
+    img.save(png_path, "PNG")
 else:
-    img = Image.open(logo_path).convert("RGBA")
-    if img.width > 520:
-        ratio = 520 / float(img.width)
-        img = img.resize((520, int(img.height * ratio)), Image.Resampling.LANCZOS)
-    img.save(logo_path, "PNG")
+    img = Image.new("RGBA", (480, 140), (6, 12, 28, 255))
+    draw = ImageDraw.Draw(img)
+    draw.text((195, 52), "Eonlux Core", fill=(230, 240, 255, 255))
+    draw.text((125, 82), "Novas Possibilidades para grandes historias", fill=(140, 180, 230, 255))
+    img.save(png_path, "PNG")
 
-# Moldura da barra de progresso (320x10 px)
-box = Image.new("RGBA", (320, 10), (25, 38, 64, 255))
+# Moldura da barra de progresso (360x10 px)
+box = Image.new("RGBA", (360, 10), (16, 28, 52, 255))
 draw_box = ImageDraw.Draw(box)
-draw_box.rectangle([0, 0, 319, 9], outline=(56, 139, 253, 255), width=1)
+draw_box.rectangle([0, 0, 359, 9], outline=(56, 139, 253, 255), width=1)
 box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
 
-# Preenchimento azul da barra de progresso (316x6 px)
-bar = Image.new("RGBA", (316, 6), (19, 127, 236, 255))
+# Preenchimento azul da barra de progresso (356x6 px)
+bar = Image.new("RGBA", (356, 6), (19, 127, 236, 255))
 bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
 EOF
 
