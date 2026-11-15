@@ -1,5 +1,13 @@
-# Ambiente visual, gerenciador de docks e temas de boot
-plank
-plymouth
-plymouth-themes
-lightdm-gtk-greeter-settings
+network-manager
+network-manager-gnome
+wpasupplicant
+wireless-tools
+rfkill
+isc-dhcp-client
+iproute2
+pipewire-audio
+pipewire-pulse
+wireplumber
+pavucontrol
+firefox-esr
+firefox-esr-l10n-pt-br
