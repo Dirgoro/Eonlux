@@ -4,14 +4,13 @@ set -e
 
 echo "[EonluxOS Binary Hook] Personalizando menus de boot (Isolinux / GRUB)..."
 
-# Substitui textos padrão do Debian nos menus de boot da ISO
 for cfg in binary/isolinux/*.cfg binary/boot/grub/*.cfg; do
     if [ -f "$cfg" ]; then
+        sed -i 's/Debian GNU\/Linux 13 (trixie)/EonluxOS 1.0 Core/g' "$cfg" || true
         sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
     fi
 done
 
-# Gera imagem splash 640x480 a partir da logo oficial para o menu de boot
 LOGO_SRC="chroot/usr/share/plymouth/themes/eonluxos/eonlux-logo.png"
 if [ -f "$LOGO_SRC" ] && command -v python3 >/dev/null 2>&1; then
     python3 - << 'EOF'
@@ -19,10 +18,20 @@ from PIL import Image
 import os
 
 src = "chroot/usr/share/plymouth/themes/eonluxos/eonlux-logo.png"
-img = Image.open(src).convert("RGB").resize((640, 480), Image.Resampling.LANCZOS)
+logo = Image.open(src).convert("RGBA")
+
+# Cria tela 640x480 azul-marinho e compõe o logo centralizado sem distorção ou fundo preto
+canvas = Image.new("RGBA", (640, 480), (6, 12, 28, 255))
+target_w = 460
+ratio = target_w / float(logo.width)
+logo_resized = logo.resize((target_w, int(logo.height * ratio)), Image.Resampling.LANCZOS)
+pos_x = (640 - logo_resized.width) // 2
+pos_y = 32
+canvas.alpha_composite(logo_resized, (pos_x, pos_y))
+final_splash = canvas.convert("RGB")
 
 for target in ["binary/isolinux/splash.png", "binary/boot/grub/splash.png"]:
     if os.path.isdir(os.path.dirname(target)):
-        img.save(target, "PNG")
+        final_splash.save(target, "PNG")
 EOF
 fi
