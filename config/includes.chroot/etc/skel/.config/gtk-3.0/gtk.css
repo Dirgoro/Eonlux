@@ -1,0 +1,27 @@
+/* Estilização da barra superior do EonluxOS */
+panel, .xfce4-panel, XfcePanelWindow {
+    background-color: #060C1C;
+    color: #E2E8F0;
+    border-bottom: 2px solid #137FEC;
+}
+
+/* Itens, botões e relógio na barra superior */
+.xfce4-panel button, 
+.xfce4-panel .widget, 
+.xfce4-panel label,
+.xfce4-panel .button {
+    background-color: transparent;
+    color: #E2E8F0;
+    border: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+.xfce4-panel button:hover {
+    background-color: rgba(19, 127, 236, 0.25);
+    color: #FFFFFF;
+}
+
+.xfce4-panel button:active {
+    background-color: rgba(19, 127, 236, 0.4);
+}
