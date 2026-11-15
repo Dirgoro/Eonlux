@@ -1,0 +1,1 @@
+EARLYOOM_ARGS="-r 60 -m 6,3 -s 10,5 --avoid '(^|/)(init|systemd|Xorg|lightdm|xfwm4|xfce4-session|xfce4-panel|plank)$' --prefer '(^|/)(firefox-esr|Isolated Web Co|Web Content)$'"
