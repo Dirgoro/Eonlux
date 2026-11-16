@@ -1,27 +1,45 @@
-/* Estilização da barra superior do EonluxOS */
+/* Barra superior minimalista EonluxOS */
 panel, .xfce4-panel, XfcePanelWindow {
     background-color: #060C1C;
     color: #E2E8F0;
-    border-bottom: 2px solid #137FEC;
+    border-bottom: 1px solid rgba(19, 127, 236, 0.45);
+    font-family: "Noto Sans", sans-serif;
+    font-size: 9.5pt;
 }
 
-/* Itens, botões e relógio na barra superior */
-.xfce4-panel button, 
-.xfce4-panel .widget, 
+.xfce4-panel button,
+.xfce4-panel .widget,
 .xfce4-panel label,
 .xfce4-panel .button {
     background-color: transparent;
     color: #E2E8F0;
     border: none;
+    border-radius: 6px;
     box-shadow: none;
     text-shadow: none;
+    padding: 0 6px;
+    margin: 2px 1px;
 }
 
 .xfce4-panel button:hover {
-    background-color: rgba(19, 127, 236, 0.25);
+    background-color: rgba(19, 127, 236, 0.22);
     color: #FFFFFF;
 }
 
+.xfce4-panel button:checked,
 .xfce4-panel button:active {
-    background-color: rgba(19, 127, 236, 0.4);
+    background-color: rgba(19, 127, 236, 0.38);
+    color: #FFFFFF;
+}
+
+#whiskermenu-button {
+    font-weight: 600;
+    padding-left: 8px;
+    padding-right: 10px;
+}
+
+#clock-button {
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding-right: 10px;
 }
