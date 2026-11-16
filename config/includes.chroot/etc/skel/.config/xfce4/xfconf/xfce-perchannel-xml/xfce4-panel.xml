@@ -18,7 +18,6 @@
         <value type="int" value="4"/>
         <value type="int" value="5"/>
         <value type="int" value="6"/>
-        <value type="int" value="7"/>
       </property>
     </property>
   </property>
@@ -36,13 +35,10 @@
     <property name="plugin-4" type="string" value="systray">
       <property name="square-icons" type="bool" value="true"/>
     </property>
-    <Property name="plugin-5" type="string" value="pulseaudio">
-      <Property name="enable-keyboard-shortcuts" type="bool" value="true"/>
-    </Property>
-    <Property name="plugin-6" type="string" value="power-manager-plugin"/>
-    <Property name="plugin-7" type="string" value="clock">
-      <Property name="digital-layout" type="uint" value="3"/>
-      <Property name="digital-time-format" type="string" value="%a, %d de %b %H:%M"/>
-    </Property>
+    <property name="plugin-5" type="string" value="pulseaudio"/>
+    <property name="plugin-6" type="string" value="clock">
+      <property name="digital-layout" type="uint" value="3"/>
+      <property name="digital-time-format" type="string" value="%a, %d de %b %H:%M"/>
+    </property>
   </property>
 </channel>
