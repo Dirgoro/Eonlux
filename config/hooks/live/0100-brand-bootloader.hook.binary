@@ -2,71 +2,17 @@
 
 set -e
 
-echo "[EonluxOS Binary Hook] Gerando eonlux-splash.png para Isolinux/GRUB..."
+echo "[EonluxOS Binary Hook] Copiando eonlux-splash.png para Isolinux/GRUB..."
 
-# Caminho para o logo Eonlux Core (certifique-se que o arquivo .svg existe neste local)
-LOGO_SVG="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
-TEMP_BRAND="temp_brand.png"
+SPLASH_SRC="chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png"
 
-if [ -f "$LOGO_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
-    # Cria uma versão rasterizada do logo com 340px de largura
-    rsvg-convert -w 340 "$LOGO_SVG" -o "$TEMP_BRAND"
+if [ -f "$SPLASH_SRC" ]; then
+    if [ -d "binary/isolinux" ]; then
+        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
+        cp -f "$SPLASH_SRC" binary/isolinux/splash.png
+    fi
 
-    python3 - << 'EOF'
-from PIL import Image, ImageDraw, ImageFont
-import os, glob
-
-# Cria o canvas de 640x480 com fundo azul-marinho sólido (r=6, g=12, b=28)
-canvas_w, canvas_h = 640, 480
-final_splash = Image.new("RGB", (canvas_w, canvas_h), (6, 12, 28))
-draw = ImageDraw.Draw(final_splash)
-
-# Carrega o logo rasterizado (Eonlux Core)
-if os.path.exists("temp_brand.png"):
-    brand = Image.open("temp_brand.png").convert("RGBA")
-    # Centraliza o logo horizontalmente na parte superior (y=18)
-    pos_x = (canvas_w - brand.width) // 2
-    final_splash.alpha_composite(brand, (pos_x, 18))
-
-# Desenha a caixa de menu centralizada (Outline ciano #55aaff)
-# Coordenadas aproximadas baseadas na referência
-box_x1, box_y1 = 85, 185
-box_x2, box_y2 = 555, 385
-draw.rectangle([box_x1, box_y1, box_x2, box_y2], outline=(85, 170, 255, 180), width=1)
-
-# Salva a imagem final
-final_splash.save("binary/isolinux/eonlux-splash.png", "PNG")
-
-# Aplica a splash em todos os locais necessários (Isolinux, Grub, etc.)
-if os.path.isdir("binary/isolinux"):
-    final_splash.save("binary/isolinux/splash.png", "PNG")
-
-for path in glob.glob("binary/**/splash.png", recursive=True):
-    final_splash.save(path, "PNG")
-
-# Limpeza
-if os.path.exists("temp_brand.png"):
-    os.remove("temp_brand.png")
-EOF
+    find binary -name "splash.png" -exec cp -f "$SPLASH_SRC" {} + 2>/dev/null || true
 else
-    echo "[Aviso] rsvg-convert ou logo não encontrado. Usando fallback de cor sólida."
-    python3 - << 'EOF'
-from PIL import Image, ImageDraw
-import os, glob
-
-canvas_w, canvas_h = 640, 480
-final_splash = Image.new("RGB", (canvas_w, canvas_h), (6, 12, 28))
-draw = ImageDraw.Draw(final_splash)
-
-# Apenas a caixa de menu sem o logo se ele faltar
-box_x1, box_y1 = 85, 185
-box_x2, box_y2 = 555, 385
-draw.rectangle([box_x1, box_y1, box_x2, box_y2], outline=(85, 170, 255, 180), width=1)
-
-final_splash.save("binary/isolinux/eonlux-splash.png", "PNG")
-if os.path.isdir("binary/isolinux"):
-    final_splash.save("binary/isolinux/splash.png", "PNG")
-for path in glob.glob("binary/**/splash.png", recursive=True):
-    final_splash.save(path, "PNG")
-EOF
+    echo "[Aviso] eonlux-splash.png não encontrado em $SPLASH_SRC"
 fi
