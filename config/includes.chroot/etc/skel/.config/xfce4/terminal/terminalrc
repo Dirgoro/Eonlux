@@ -1,0 +1,10 @@
+[Configuration]
+FontName=Noto Sans Mono 9
+MiscDefaultGeometry=80x20
+MiscMenubarDefault=TRUE
+MiscToolbarDefault=FALSE
+MiscBordersDefault=TRUE
+ScrollingLines=2000
+ColorForeground=#e2e8f0
+ColorBackground=#060c1c
+ColorCursor=#137fec
