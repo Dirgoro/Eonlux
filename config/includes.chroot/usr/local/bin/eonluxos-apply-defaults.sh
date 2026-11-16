@@ -6,7 +6,8 @@ xrandr --auto 2>/dev/null || true
 
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
-xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 10" 2>/dev/null || true
+xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 9" 2>/dev/null || true
+xfconf-query -c xsettings -p /Xft/DPI -n -t int -s 96 2>/dev/null || true
 
 xfconf-query -c xfce4-desktop -p /desktop-icons/icon-size -n -t uint -s 30 2>/dev/null || true
 xfconf-query -c xfce4-desktop -p /desktop-icons/use-custom-font-size -n -t bool -s true 2>/dev/null || true
@@ -28,9 +29,12 @@ gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 36 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 42 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 34 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 40 2>/dev/null || true
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
+
+# Inicia o ajuste automático de janelas para resoluções >= 1024x600
+pgrep -f eonluxos-window-fit.sh >/dev/null || nohup /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
 
 xfce4-panel -r 2>/dev/null || true
 xfdesktop --reload 2>/dev/null || true
