@@ -1,0 +1,14 @@
+[Unit]
+Description=EonluxOS Hierarchical Memory Manager (ZRAM + 3GB Disk Fallback)
+DefaultDependencies=no
+After=local-fs.target
+Before=swap.target sysinit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/eonluxos-memory-manager start
+ExecStop=/usr/local/sbin/eonluxos-memory-manager stop
+
+[Install]
+WantedBy=swap.target
