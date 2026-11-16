@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+# Garante que zram-tools padrao do Debian nao entre em conflito com o gerenciador EonluxOS
+if systemctl list-unit-files | grep -q '^zramswap.service'; then
+    systemctl disable zramswap.service 2>/dev/null || true
+fi
+
+if [ -f /usr/local/sbin/eonluxos-memory-manager ]; then
+    sed -i 's/\r$//' /usr/local/sbin/eonluxos-memory-manager
+    chmod 0755 /usr/local/sbin/eonluxos-memory-manager
+fi
+
+if [ -f /etc/systemd/system/eonluxos-memory.service ]; then
+    sed -i 's/\r$//' /etc/systemd/system/eonluxos-memory.service
+    chmod 0644 /etc/systemd/system/eonluxos-memory.service
+    systemctl enable eonluxos-memory.service
+fi
