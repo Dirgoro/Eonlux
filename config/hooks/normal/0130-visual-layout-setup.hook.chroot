@@ -3,7 +3,7 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Registrando ícones, wallpaper padrão e ativos do Plymouth..."
+echo "[EonluxOS Hook] Registrando ícones, wallpaper padrão e ativos do Plymouth/Bootloader..."
 
 find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 chmod +x /usr/local/bin/*.sh 2>/dev/null || true
@@ -55,10 +55,25 @@ import os
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
 
 raw_brand = os.path.join(theme_dir, "stage3-brand-raw.png")
+brand_out = os.path.join(theme_dir, "stage3-brand.png")
 if os.path.exists(raw_brand):
     im = Image.open(raw_brand).convert("RGBA")
     crop_h = int(im.height * 0.74)
-    im.crop((0, 0, im.width, crop_h)).save(os.path.join(theme_dir, "stage3-brand.png"), "PNG")
+    im.crop((0, 0, im.width, crop_h)).save(brand_out, "PNG")
+
+# Gera eonlux-splash.png (640x480) para o menu Isolinux/GRUB
+splash = Image.new("RGBA", (640, 480), (6, 12, 28, 255))
+draw = ImageDraw.Draw(splash)
+if os.path.exists(brand_out):
+    b_im = Image.open(brand_out).convert("RGBA")
+    target_w = 340
+    ratio = target_w / float(b_im.width)
+    b_res = b_im.resize((target_w, int(b_im.height * ratio)), Image.Resampling.LANCZOS)
+    splash.alpha_composite(b_res, ((640 - b_res.width) // 2, 16))
+
+draw.rectangle([60, 188, 580, 370], outline=(85, 170, 255, 190), width=1)
+draw.line([60, 214, 580, 214], fill=(85, 170, 255, 190), width=1)
+splash.convert("RGB").save(os.path.join(theme_dir, "eonlux-splash.png"), "PNG")
 
 box = Image.new("RGBA", (360, 6), (26, 39, 64, 255))
 box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
