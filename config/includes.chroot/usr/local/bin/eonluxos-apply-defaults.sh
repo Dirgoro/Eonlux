@@ -14,8 +14,36 @@ xfconf-query -c xfce4-desktop -p /desktop-icons/use-custom-font-size -n -t bool 
 xfconf-query -c xfce4-desktop -p /desktop-icons/font-size -n -t double -s 8 2>/dev/null || true
 xfconf-query -c xfce4-desktop -p /desktop-icons/single-click -n -t bool -s true 2>/dev/null || true
 
+# Inicia applets de Wi-Fi e Bluetooth na barra superior
+pgrep -x nm-applet >/dev/null || nohup nm-applet >/dev/null 2>&1 &
+pgrep -f blueman-applet >/dev/null || nohup blueman-applet >/dev/null 2>&1 &
+
+# Inicia dock Plank
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 34 2>/dev/null || true
+gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 40 2>/dev/null || true
+pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
+
+# Garante encaixe de todas as janelas dentro da tela (mínimo 1024x600)
+pgrep -f eonluxos-window-fit.sh >/dev/null || nohup /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
+
+# Aguarda xfdesktop e aplica o wallpaper em todas as saídas detectadas
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
+        break
+    fi
+    sleep 0.5
+done
+
 MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
 [ -z "$MONITORS" ] && MONITORS="0 Virtual-1 LVDS-1 eDP-1 VGA-1 HDMI-1"
+
+for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E "last-image$|image-path$"); do
+    xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" 2>/dev/null || true
+done
 
 for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     BASE="/backdrop/screen0/monitor${mon}/workspace0"
@@ -25,26 +53,7 @@ for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 34 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 40 2>/dev/null || true
-pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
-
-# Inicia o ajuste automático de janelas para resoluções >= 1024x600
-pgrep -f eonluxos-window-fit.sh >/dev/null || nohup /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
-
-xfce4-panel -r 2>/dev/null || true
 xfdesktop --reload 2>/dev/null || true
+sleep 1.0
 
-for i in 1 2 3 4 5 6 7 8 9 10; do
-    if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
-        break
-    fi
-    sleep 0.5
-done
-
-sleep 1.2
 sudo -n /usr/local/bin/eonluxos-finish-boot.sh 2>/dev/null || true
