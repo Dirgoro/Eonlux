@@ -3,22 +3,41 @@
 set -e
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-echo "[EonluxOS Hook] Mascarando getty@tty1, configurando Plymouth no initramfs e permissões..."
+echo "[EonluxOS Hook] Registrando ícones, wallpaper padrão e ativos do Plymouth..."
 
 find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 chmod +x /usr/local/bin/*.sh 2>/dev/null || true
 chmod 0440 /etc/sudoers.d/eonluxos-boot 2>/dev/null || true
-gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 
-# Impede que o terminal de texto tty1 interrompa o Plymouth durante o boot gráfico
 systemctl mask getty@tty1.service 2>/dev/null || true
+systemctl enable NetworkManager.service 2>/dev/null || true
+systemctl enable bluetooth.service 2>/dev/null || true
 
-mkdir -p /usr/share/backgrounds/xfce
-ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-stripes.png
-ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-verticals.png
+LOGO_SVG="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+if [ -f "$LOGO_SVG" ]; then
+    cp -f "$LOGO_SVG" /usr/share/pixmaps/eonluxos-logo.svg
+    if command -v rsvg-convert >/dev/null 2>&1; then
+        mkdir -p /usr/share/icons/hicolor/24x24/apps /usr/share/icons/hicolor/48x48/apps /usr/share/icons/hicolor/128x128/apps
+        rsvg-convert -w 24 -h 24 "$LOGO_SVG" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
+        rsvg-convert -w 48 -h 48 "$LOGO_SVG" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        rsvg-convert -w 128 -h 128 "$LOGO_SVG" -o /usr/share/icons/hicolor/128x128/apps/eonluxos-logo.png
+        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
+    fi
+fi
+
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
+
+WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
+if [ -f "$WALLPAPER" ]; then
+    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
+    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-stripes.png
+    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-verticals.png
+    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-shapes.svg
+    ln -sf "$WALLPAPER" /usr/share/images/desktop-base/default
+fi
 
 THEME_DIR="/usr/share/plymouth/themes/eonluxos"
-LOGO_SVG="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 BRAND_SVG="/usr/share/pixmaps/eonluxos-brand.svg"
 
 if [ -d "$THEME_DIR" ]; then
