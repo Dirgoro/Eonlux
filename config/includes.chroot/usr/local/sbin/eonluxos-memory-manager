@@ -1,0 +1,100 @@
+#!/bin/sh
+# EonluxOS 1.0 Core - Gerenciador de Memoria Hierarquica (ZRAM pri=100 -> Disco 3GB pri=10)
+set -eu
+
+SWAPFILE="/swapfile"
+DISK_SWAP_MB=3072
+MIN_FREE_DISK_KB=6291456
+
+setup_zram() {
+    # Evita duplicar caso zram0 ja esteja ativo
+    if grep -q "^/dev/zram0 " /proc/swaps 2>/dev/null; then
+        return 0
+    fi
+
+    modprobe zram num_devices=1 2>/dev/null || return 0
+
+    if [ ! -b /dev/zram0 ]; then
+        return 0
+    fi
+
+    # Calcula 75% da RAM total em bytes
+    mem_total_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+    zram_bytes=$(( (mem_total_kb * 75 / 100) * 1024 ))
+
+    echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+
+    # Prioriza zstd (melhor taxa de compressao), com fallback para lz4 ou lzo
+    if [ -w /sys/block/zram0/comp_algorithm ]; then
+        for algo in zstd lz4 lzo; do
+            if grep -q "$algo" /sys/block/zram0/comp_algorithm 2>/dev/null; then
+                echo "$algo" > /sys/block/zram0/comp_algorithm 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+
+    echo "$zram_bytes" > /sys/block/zram0/disksize
+    mkswap -L "eonluxos-zram" /dev/zram0 >/dev/null
+    swapon --priority 100 /dev/zram0
+}
+
+is_live_session() {
+    if [ -d /run/live/medium ] || [ -d /lib/live/mount ]; then
+        return 0
+    fi
+
+    root_fstype=$(awk '$2 == "/" {print $3; exit}' /proc/mounts)
+    case "$root_fstype" in
+        overlay|tmpfs|aufs|squashfs)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+setup_disk_swap() {
+    # Em sessao Live (RAM/USB), nao cria swapfile de 3GB no overlay
+    if is_live_session; then
+        return 0
+    fi
+
+    if grep -q "^${SWAPFILE} " /proc/swaps 2>/dev/null; then
+        return 0
+    fi
+
+    if [ ! -f "$SWAPFILE" ]; then
+        avail_kb=$(df -Pk / | awk 'NR==2 {print $4}')
+        if [ -z "$avail_kb" ] || [ "$avail_kb" -lt "$MIN_FREE_DISK_KB" ]; then
+            echo "EonluxOS Memory: espaco insuficiente em / para reservar 3GB de swap." >&2
+            return 0
+        fi
+
+        # Usa dd para garantir blocos contiguos sem buracos (exigencia do kernel para swap)
+        dd if=/dev/zero of="$SWAPFILE" bs=1M count="$DISK_SWAP_MB" status=none
+        chmod 0600 "$SWAPFILE"
+        mkswap -L "eonluxos-diskswap" "$SWAPFILE" >/dev/null
+    else
+        chmod 0600 "$SWAPFILE"
+    fi
+
+    swapon --priority 10 "$SWAPFILE"
+}
+
+case "${1:-start}" in
+    start)
+        setup_zram
+        setup_disk_swap
+        ;;
+    stop)
+        swapoff /dev/zram0 2>/dev/null || true
+        swapoff "$SWAPFILE" 2>/dev/null || true
+        ;;
+    *)
+        echo "Uso: $0 {start|stop}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
