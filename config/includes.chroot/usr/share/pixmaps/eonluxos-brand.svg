@@ -1,67 +1,101 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="800" height="420">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440" width="800" height="440" fill="none">
   <defs>
-    <linearGradient id="ringTop" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#0A3D91" />
-      <stop offset="55%" stop-color="#1E88E5" />
-      <stop offset="100%" stop-color="#E3F2FD" />
+    <!-- Gradiente azul profundo para o hemisfério superior esquerdo do logo -->
+    <linearGradient id="sphereDarkBlue" x1="15%" y1="10%" x2="75%" y2="85%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="45%" stop-color="#1D4ED8" />
+      <stop offset="100%" stop-color="#0F296E" />
     </linearGradient>
-    <linearGradient id="ringBottom" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#0D47A1" />
-      <stop offset="55%" stop-color="#1976D2" />
-      <stop offset="100%" stop-color="#BBDEFB" />
+
+    <!-- Gradiente prata/branco-gelo para o arco superior e faixa central -->
+    <linearGradient id="sphereSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F2FE" />
+      <stop offset="35%" stop-color="#FFFFFF" />
+      <stop offset="70%" stop-color="#BAE6FD" />
+      <stop offset="100%" stop-color="#38BDF8" />
     </linearGradient>
-    <linearGradient id="waveRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#1565C0" />
-      <stop offset="45%" stop-color="#4FC3F7" />
-      <stop offset="75%" stop-color="#FFFFFF" />
-      <stop offset="100%" stop-color="#00B0FF" />
+
+    <!-- Gradiente ciano luminoso para a fita em S e base do globo -->
+    <linearGradient id="sphereCyan" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#0EA5E9" />
+      <stop offset="45%" stop-color="#7DD3FC" />
+      <stop offset="75%" stop-color="#E0F2FE" />
+      <stop offset="100%" stop-color="#0284C7" />
     </linearGradient>
-    <linearGradient id="orbitStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#42A5F5" stop-opacity="0.85" />
-      <stop offset="50%" stop-color="#1565C0" stop-opacity="0.25" />
-      <stop offset="100%" stop-color="#80D8FF" stop-opacity="0.95" />
+
+    <!-- Gradiente do anel orbital externo -->
+    <linearGradient id="orbitRing" x1="0%" y1="75%" x2="100%" y2="25%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.15" />
+      <stop offset="30%" stop-color="#7DD3FC" stop-opacity="0.85" />
+      <stop offset="70%" stop-color="#38BDF8" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0.1" />
     </linearGradient>
-    <radialGradient id="starFlare" cx="50%" cy="50%" r="50%">
+
+    <!-- Brilho dos pontos de luz (flares) -->
+    <radialGradient id="flareGlow" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
-      <stop offset="30%" stop-color="#40C4FF" stop-opacity="0.85" />
-      <stop offset="100%" stop-color="#0091EA" stop-opacity="0" />
+      <stop offset="30%" stop-color="#7DD3FC" stop-opacity="0.85" />
+      <stop offset="70%" stop-color="#0EA5E9" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0" />
     </radialGradient>
-    <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+
+    <!-- Gradiente metálico vertical para o texto "Eonlux" -->
+    <linearGradient id="eonluxTextGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="60%" stop-color="#DCEEFF" />
-      <stop offset="100%" stop-color="#82B1FF" />
+      <stop offset="48%" stop-color="#F1F5F9" />
+      <stop offset="78%" stop-color="#CBD5E1" />
+      <stop offset="100%" stop-color="#93C5FD" />
     </linearGradient>
-    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#B3E5FC" />
-      <stop offset="100%" stop-color="#4FC3F7" />
+
+    <!-- Gradiente ciano suave para o texto "Core" -->
+    <linearGradient id="coreTextGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD" />
+      <stop offset="55%" stop-color="#7DD3FC" />
+      <stop offset="100%" stop-color="#38BDF8" />
     </linearGradient>
-    <linearGradient id="dividerLine" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#4FC3F7" stop-opacity="0" />
-      <stop offset="50%" stop-color="#4FC3F7" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#4FC3F7" stop-opacity="0" />
-    </linearGradient>
+
+    <!-- Sombra sutil para legibilidade tanto em fundo claro quanto escuro -->
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.35" />
+    </filter>
   </defs>
 
-  <!-- Emblema superior centralizado -->
-  <g transform="translate(292, 14) scale(0.84)">
-    <ellipse cx="128" cy="128" rx="112" ry="44" transform="rotate(-24 128 128)" fill="none" stroke="url(#orbitStroke)" stroke-width="3.2" />
-    <path d="M 56 128 A 72 72 0 0 1 196 105 L 176 114 A 52 52 0 0 0 76 128 Z" fill="url(#ringTop)" />
-    <path d="M 200 128 A 72 72 0 0 1 60 151 L 80 142 A 52 52 0 0 0 180 128 Z" fill="url(#ringBottom)" />
-    <path d="M 55 126 C 72 154, 108 152, 134 132 C 156 115, 182 104, 204 114 C 186 92, 152 94, 124 114 C 100 132, 74 138, 55 126 Z" fill="url(#waveRibbon)" />
-    <circle cx="202" cy="112" r="22" fill="url(#starFlare)" />
-    <path d="M 202 96 L 204.5 109.5 L 218 112 L 204.5 114.5 L 202 128 L 199.5 114.5 L 186 112 L 199.5 109.5 Z" fill="#FFFFFF" />
+  <!-- ==================== SÍMBOLO / LOGOTIPO EONLUX ==================== -->
+  <g id="eonlux-logo" transform="translate(400, 138)" filter="url(#softShadow)">
+    <!-- Órbita elíptica inclinada -->
+    <ellipse cx="0" cy="4" rx="168" ry="62" transform="rotate(-21)" stroke="url(#orbitRing)" stroke-width="2.4" fill="none" />
+
+    <!-- Esfera 3D com faixas entrelaçadas -->
+    <g id="sphere-core">
+      <!-- Arco superior (azul -> prata) -->
+      <path d="M -92 -24 C -84 -78, -34 -110, 22 -104 C 66 -99, 98 -68, 106 -26 C 88 -56, 56 -76, 16 -78 C -34 -80, -74 -54, -92 -24 Z" fill="url(#sphereSilver)" />
+      <path d="M -98 -10 C -96 -66, -52 -106, 4 -106 C -38 -94, -68 -60, -72 -14 C -74 6, -68 22, -60 34 C -84 24, -99 8, -98 -10 Z" fill="url(#sphereDarkBlue)" />
+
+      <!-- Faixa central diagonal em "S" -->
+      <path d="M -104 6 C -92 34, -52 38, -10 14 C 32 -10, 74 -18, 108 4 C 96 -28, 56 -40, 12 -16 C -32 8, -74 16, -104 6 Z" fill="url(#sphereCyan)" />
+
+      <!-- Arco inferior (prata -> azul profundo) -->
+      <path d="M -82 38 C -56 76, -8 94, 42 82 C 82 72, 106 42, 110 8 C 92 38, 60 56, 20 56 C -26 56, -62 46, -82 38 Z" fill="url(#sphereSilver)" />
+      <path d="M -56 76 C -22 104, 32 106, 72 78 C 94 62, 106 38, 110 12 C 96 48, 62 74, 18 78 C -14 80, -38 78, -56 76 Z" fill="url(#sphereDarkBlue)" />
+    </g>
+
+    <!-- Pontos de brilho (flares) sobre o anel/esfera -->
+    <circle cx="-86" cy="34" r="22" fill="url(#flareGlow)" />
+    <circle cx="-86" cy="34" r="3.5" fill="#FFFFFF" />
+
+    <circle cx="112" cy="-12" r="20" fill="url(#flareGlow)" />
+    <circle cx="112" cy="-12" r="3" fill="#FFFFFF" />
+
+    <circle cx="78" cy="48" r="15" fill="url(#flareGlow)" />
+    <circle cx="78" cy="48" r="2.2" fill="#FFFFFF" />
   </g>
 
-  <!-- Tipografia principal "Eonlux" -->
-  <text x="152" y="294" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="88" font-weight="700" letter-spacing="2" fill="url(#wordmarkGrad)">Eonlux</text>
+  <!-- ==================== ESCRITA: Eonlux Core ==================== -->
+  <g id="eonlux-core-typography" filter="url(#softShadow)">
+    <!-- Palavra "Core" posicionada exatamente acima de "ux" -->
+    <text x="536" y="292" font-family="&#39;Eurostile&#39;, &#39;Bank Gothic&#39;, &#39;Orbitron&#39;, &#39;Exo 2&#39;, &#39;Segoe UI&#39;, sans-serif" font-size="44" font-weight="700" letter-spacing="2" fill="url(#coreTextGrad)">Core</text>
 
-  <!-- Sub-marca "Core" alinhada acima de "ux" -->
-  <text x="488" y="250" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="34" font-weight="700" letter-spacing="1.5" fill="url(#coreGrad)">Core</text>
-
-  <!-- Linha divisória com brilho central -->
-  <rect x="160" y="316" width="480" height="2" fill="url(#dividerLine)" />
-  <path d="M 400 307 L 403 315 L 411 317 L 403 319 L 400 327 L 397 319 L 389 317 L 397 315 Z" fill="#80D8FF" />
-
-  <!-- Slogan oficial -->
-  <text x="400" y="358" text-anchor="middle" font-family="&#39;Noto Sans&#39;, &#39;Liberation Sans&#39;, &#39;DejaVu Sans&#39;, sans-serif" font-size="20" font-weight="400" letter-spacing="3.5" fill="#E3F2FD">Novas Possibilidades para grandes histórias</text>
+    <!-- Palavra principal "Eonlux" -->
+    <text x="400" y="388" text-anchor="middle" font-family="&#39;Eurostile&#39;, &#39;Bank Gothic&#39;, &#39;Orbitron&#39;, &#39;Exo 2&#39;, &#39;Segoe UI&#39;, sans-serif" font-size="132" font-weight="700" letter-spacing="1.5" fill="url(#eonluxTextGrad)">Eonlux</text>
+  </g>
 </svg>
