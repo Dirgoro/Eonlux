@@ -24,7 +24,6 @@ for mon in $MONITORS 0 Virtual-1 LVDS-1; do
     xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
 done
 
-# Configuração da Dock Plank alinhada com o estilo da imagem de referência
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
 gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
@@ -34,6 +33,7 @@ gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1
 pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
 
 xfce4-panel -r 2>/dev/null || true
+xfdesktop --reload 2>/dev/null || true
 
 for i in 1 2 3 4 5 6 7 8 9 10; do
     if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
@@ -42,7 +42,5 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
     sleep 0.5
 done
 
-xfdesktop --reload 2>/dev/null || true
 sleep 1.2
-
 sudo -n /usr/local/bin/eonluxos-finish-boot.sh 2>/dev/null || true
