@@ -1,0 +1,15 @@
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+user-setup
+sudo
+locales
+console-setup
+keyboard-configuration
+firmware-linux-free
+ca-certificates
+xfce4-pulseaudio-plugin
+xfce4-power-manager
+xfce4-power-manager-plugins
