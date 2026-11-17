@@ -1,11 +1,11 @@
 #!/bin/sh
-set -eu
+set -e
 
 SPLASH_SRC=""
 for candidate in \
+    chroot/usr/share/eonluxos/eonlux-splash.png \
     chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png \
-    config/includes.binary/isolinux/eonlux-splash.png \
-    config/includes.chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png
+    config/includes.chroot/usr/share/eonluxos/eonlux-splash.png
 do
     if [ -f "$candidate" ]; then
         SPLASH_SRC="$candidate"
@@ -13,89 +13,7 @@ do
     fi
 done
 
-# ==============================================================================
-# 1. ISOLINUX (BIOS Legacy) - Forca vesamenu.c32 para exibir logo + paleta Eonlux
-# ==============================================================================
-if [ -d binary/isolinux ]; then
-    if [ -n "$SPLASH_SRC" ]; then
-        cp -f "$SPLASH_SRC" binary/isolinux/splash.png
-        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
-    fi
-
-    # Substitui menu.c32 (modo texto) por vesamenu.c32 (modo grafico com splash.png)
-    for cfg in binary/isolinux/*.cfg; do
-        if [ -f "$cfg" ]; then
-            sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
-            sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
-        fi
-    done
-
-    cat <<'EOF' > binary/isolinux/stdmenu.cfg
-menu background splash.png
-menu title EonluxOS 1.0 Core
-menu color screen	37;40      #80e2e8f0 #ff060c1c std
-menu color border	30;44      #ff137fec #ff060c1c std
-menu color title	1;36;44    #ff38bdf8 #ff060c1c std
-menu color sel		7;37;40    #ffffffff #ff137fec all
-menu color unsel	37;44      #ffe2e8f0 #ff060c1c std
-menu color help		37;40      #ff94a3b8 #ff060c1c std
-menu color timeout_msg	37;40      #ff38bdf8 #ff060c1c std
-menu color timeout	1;37;40    #ffffffff #ff060c1c std
-menu color msg07	37;40      #90ffffff #ff060c1c std
-menu color tabmsg	31;40      #ff38bdf8 #ff060c1c std
-
-menu vshift 10
-menu rows 7
-menu helpmsgrow 19
-menu tabmsgrow 21
-menu cmdlinerow 21
-menu timeoutrow 22
-menu margin 8
-menu tabmsg Pressione [Tab] para editar opcoes de arranque
-EOF
-
-    if [ -f binary/isolinux/menu.cfg ]; then
-        sed -i 's/^timeout .*/timeout 50/' binary/isolinux/menu.cfg || true
-    fi
-
-    if [ -f binary/isolinux/live.cfg ]; then
-        sed -i 's/menu label .*/menu label ^Iniciar EonluxOS 1.0 Core (Modo Live)/' binary/isolinux/live.cfg || true
-    fi
-
-    if [ -f binary/isolinux/install.cfg ]; then
-        sed -i 's/Install GUI/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/isolinux/install.cfg || true
-        sed -i 's/menu label \^Install$/menu label Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/isolinux/install.cfg || true
-    fi
-fi
-
-# ==============================================================================
-# 2. GRUB (UEFI) - Paleta #060C1C / #137FEC + Logo Eonlux
-# ==============================================================================
-if [ -d binary/boot/grub ]; then
-    if [ -n "$SPLASH_SRC" ]; then
-        cp -f "$SPLASH_SRC" binary/boot/grub/splash.png
-    fi
-
-    if [ -f binary/boot/grub/grub.cfg ]; then
-        sed -i 's/Debian GNU\/Linux Live (kernel [^)]*)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
-        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
-        sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/boot/grub/grub.cfg || true
-        sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/boot/grub/grub.cfg || true
-        sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
-        sed -i 's/^set timeout=.*/set timeout=5/' binary/boot/grub/grub.cfg || true
-
-        cat <<'EOF' > /tmp/grub-eonlux-header.cfg
-set color_normal=light-gray/black
-set color_highlight=white/blue
-set menu_color_normal=light-gray/black
-set menu_color_highlight=white/blue
-if [ -f /boot/grub/splash.png ]; then
-    insmod png
-    background_image /boot/grub/splash.png
-fi
-EOF
-        cat /tmp/grub-eonlux-header.cfg binary/boot/grub/grub.cfg > /tmp/grub-merged.cfg
-        mv /tmp/grub-merged.cfg binary/boot/grub/grub.cfg
-        rm -f /tmp/grub-eonlux-header.cfg
-    fi
+if [ -n "$SPLASH_SRC" ] && [ -d binary/isolinux ]; then
+    cp -f "$SPLASH_SRC" binary/isolinux/splash.png
+    cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
 fi
