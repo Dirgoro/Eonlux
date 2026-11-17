@@ -1,0 +1,59 @@
+# Sistema base e kernel live
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+zram-tools
+earlyoom
+dhcpcd-base
+
+# Servidor grafico Xorg e drivers leves
+xserver-xorg-core
+xserver-xorg-video-all
+xserver-xorg-input-all
+x11-xserver-utils
+xinit
+mesa-utils
+
+# Ambiente XFCE4 minimalista
+xfwm4
+xfdesktop4
+xfce4-panel
+xfce4-session
+xfce4-settings
+xfce4-whiskermenu-plugin
+xfce4-pulseaudio-plugin
+xfce4-power-manager
+xfce4-power-manager-plugins
+xfce4-terminal
+thunar
+thunar-volman
+gvfs
+gvfs-backends
+
+# Conectividade e audio (pacotes atualizados do Debian 13 Trixie)
+network-manager
+network-manager-applet
+nm-connection-editor
+blueman
+pipewire-audio
+pulseaudio-utils
+pavucontrol
+
+# Aparencia, temas, icones e boot grafico
+plymouth
+plymouth-themes
+adwaita-icon-theme
+papirus-icon-theme
+fonts-noto-core
+fonts-noto-ui-core
+
+# Utilitarios leves e suporte Python3 + GTK3 (Fase 4)
+wmctrl
+xdotool
+galculator
+mousepad
+python3
+python3-gi
+gir1.2-gtk-3.0
