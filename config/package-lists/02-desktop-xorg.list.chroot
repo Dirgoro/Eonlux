@@ -3,7 +3,6 @@ xserver-xorg-input-all
 xserver-xorg-video-fbdev
 xserver-xorg-video-vesa
 xserver-xorg-video-intel
-xserver-xorg-video-qxl
 x11-xserver-utils
 xinit
 lightdm
