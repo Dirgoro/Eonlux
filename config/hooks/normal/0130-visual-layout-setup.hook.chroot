@@ -1,109 +1,71 @@
 #!/bin/sh
+set -eu
 
-set -e
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
-echo "[EonluxOS Hook] Registrando ícones, wallpaper padrão e ativos do Plymouth/Bootloader..."
-
-find /usr/local/bin /etc/skel -type f -exec sed -i 's/\r$//' {} + 2>/dev/null || true
-chmod +x /usr/local/bin/*.sh 2>/dev/null || true
-chmod 0440 /etc/sudoers.d/eonluxos-boot 2>/dev/null || true
-
-systemctl mask getty@tty1.service 2>/dev/null || true
-systemctl enable NetworkManager.service 2>/dev/null || true
-systemctl enable bluetooth.service 2>/dev/null || true
-
-LOGO_SVG="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
-if [ -f "$LOGO_SVG" ]; then
-    cp -f "$LOGO_SVG" /usr/share/pixmaps/eonluxos-logo.svg
-    if command -v rsvg-convert >/dev/null 2>&1; then
-        mkdir -p /usr/share/icons/hicolor/24x24/apps /usr/share/icons/hicolor/48x48/apps /usr/share/icons/hicolor/128x128/apps
-        rsvg-convert -w 24 -h 24 "$LOGO_SVG" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
-        rsvg-convert -w 48 -h 48 "$LOGO_SVG" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-        rsvg-convert -w 128 -h 128 "$LOGO_SVG" -o /usr/share/icons/hicolor/128x128/apps/eonluxos-logo.png
-        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
+# Normaliza quebras de linha CRLF -> LF e permissoes de execucao nos scripts EonluxOS
+for script in \
+    /usr/local/bin/eonluxos-apply-defaults.sh \
+    /usr/local/bin/eonluxos-window-fit.sh
+do
+    if [ -f "$script" ]; then
+        sed -i 's/\r$//' "$script"
+        chmod 0755 "$script"
     fi
+done
+
+if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
+    sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
-gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
+# Gera texturas PNG da barra de progresso e garante icone eonluxos-logo no hicolor
+python3 - <<'PY'
+import os, struct, zlib
 
-WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
-if [ -f "$WALLPAPER" ]; then
-    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
-    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-stripes.png
-    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-verticals.png
-    ln -sf "$WALLPAPER" /usr/share/backgrounds/xfce/xfce-shapes.svg
-    ln -sf "$WALLPAPER" /usr/share/images/desktop-base/default
-fi
-
-THEME_DIR="/usr/share/plymouth/themes/eonluxos"
-BRAND_SVG="/usr/share/pixmaps/eonluxos-brand.svg"
-
-if [ -d "$THEME_DIR" ]; then
-    if [ -f "$LOGO_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
-        rsvg-convert -w 136 "$LOGO_SVG" -o "${THEME_DIR}/stage2-emblem.png"
-    fi
-    if [ -f "$BRAND_SVG" ] && command -v rsvg-convert >/dev/null 2>&1; then
-        rsvg-convert -w 540 "$BRAND_SVG" -o "${THEME_DIR}/stage3-brand-raw.png"
-    fi
-
-    python3 - << 'EOF'
-from PIL import Image, ImageDraw, ImageFont
-import os
+def write_png(path, w, h, rgba):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    raw = bytearray()
+    row = bytes(rgba) * w
+    for _ in range(h):
+        raw.append(0)
+        raw.extend(row)
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw))) + chunk(b"IEND", b"")
+    with open(path, "wb") as f:
+        f.write(png)
 
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
+# Trilho escuro (#16223B) e preenchimento azul eletrico (#137FEC)
+write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, (22, 34, 59, 255))
+write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, (19, 127, 236, 255))
+PY
 
-raw_brand = os.path.join(theme_dir, "stage3-brand-raw.png")
-brand_out = os.path.join(theme_dir, "stage3-brand.png")
-if os.path.exists(raw_brand):
-    im = Image.open(raw_brand).convert("RGBA")
-    crop_h = int(im.height * 0.74)
-    im.crop((0, 0, im.width, crop_h)).save(brand_out, "PNG")
-
-# Gera eonlux-splash.png (640x480) para o menu Isolinux/GRUB
-splash = Image.new("RGBA", (640, 480), (6, 12, 28, 255))
-draw = ImageDraw.Draw(splash)
-if os.path.exists(brand_out):
-    b_im = Image.open(brand_out).convert("RGBA")
-    target_w = 340
-    ratio = target_w / float(b_im.width)
-    b_res = b_im.resize((target_w, int(b_im.height * ratio)), Image.Resampling.LANCZOS)
-    splash.alpha_composite(b_res, ((640 - b_res.width) // 2, 16))
-
-draw.rectangle([60, 188, 580, 370], outline=(85, 170, 255, 190), width=1)
-draw.line([60, 214, 580, 214], fill=(85, 170, 255, 190), width=1)
-splash.convert("RGB").save(os.path.join(theme_dir, "eonlux-splash.png"), "PNG")
-
-box = Image.new("RGBA", (360, 6), (26, 39, 64, 255))
-box.save(os.path.join(theme_dir, "progress_box.png"), "PNG")
-
-bar = Image.new("RGBA", (360, 6), (19, 127, 236, 255))
-bar.save(os.path.join(theme_dir, "progress_bar.png"), "PNG")
-
-cap = Image.new("RGBA", (620, 74), (0, 0, 0, 0))
-draw = ImageDraw.Draw(cap)
-try:
-    f_bold = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", 19)
-    f_reg = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", 14)
-except Exception:
-    f_bold = ImageFont.load_default()
-    f_reg = ImageFont.load_default()
-
-t1 = "Seu equipamento ganhando nova vida..."
-t2 = "Otimizando desempenho, memória e interface para você"
-
-w1 = draw.textbbox((0, 0), t1, font=f_bold)[2]
-w2 = draw.textbbox((0, 0), t2, font=f_reg)[2]
-
-draw.text(((620 - w1) // 2, 6), t1, font=f_bold, fill=(240, 246, 255, 255))
-draw.text(((620 - w2) // 2, 38), t2, font=f_reg, fill=(168, 184, 208, 255))
-cap.save(os.path.join(theme_dir, "stage3-caption.png"), "PNG")
+# Garante que o systemd nao mate o Plymouth prematuramente antes do Xorg/XFCE
+mkdir -p /etc/systemd/system/plymouth-quit.service.d
+cat <<'EOF' > /etc/systemd/system/plymouth-quit.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=/bin/true
 EOF
 
-    update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "${THEME_DIR}/eonluxos.plymouth" 200
-    update-alternatives --set default.plymouth "${THEME_DIR}/eonluxos.plymouth"
-    plymouth-set-default-theme -R eonluxos || update-initramfs -u -k all || true
+mkdir -p /etc/systemd/system/plymouth-quit-wait.service.d
+cat <<'EOF' > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=/bin/true
+EOF
+
+# Atualiza cache de icones e configura Plymouth como tema padrao
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+    gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark 2>/dev/null || true
 fi
 
-chown -R root:root /etc/skel
+if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+    plymouth-set-default-theme eonluxos || true
+fi
+
+# Reconstroi o initramfs incluindo FRAMEBUFFER=y, modulos KMS e o tema Plymouth atualizado
+if command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -u -k all
+fi
