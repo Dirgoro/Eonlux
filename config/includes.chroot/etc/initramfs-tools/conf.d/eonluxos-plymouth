@@ -1,0 +1,2 @@
+# Forca inicializacao imediata do framebuffer grafico no initramfs
+FRAMEBUFFER=y
