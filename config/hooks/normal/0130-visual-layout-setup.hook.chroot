@@ -16,7 +16,10 @@ mkdir -p /usr/share/eonluxos \
          /usr/share/backgrounds/eonluxos \
          /usr/share/backgrounds/xfce \
          /usr/share/images/desktop-base \
-         /usr/share/plymouth/themes/eonluxos
+         /usr/share/plymouth/themes/eonluxos \
+         /usr/share/icons/hicolor/24x24/apps \
+         /usr/share/icons/hicolor/48x48/apps \
+         /usr/share/pixmaps
 
 if [ -f /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg ]; then
     ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/backgrounds/xfce/xfce-shapes.svg
@@ -24,67 +27,73 @@ if [ -f /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg ]; then
     ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/images/desktop-base/default
 fi
 
-# 3. Gerar PNGs oficiais (Splash ISOLINUX 640x480 e emblemas Plymouth) dentro do chroot
+# 3. Rasterizar o logotipo oficial SVG para icones e Plymouth (emblem.png)
+SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+if [ -f "$SVG_LOGO" ] && command -v rsvg-convert >/dev/null 2>&1; then
+    chmod 0644 "$SVG_LOGO"
+    rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
+    rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+    rsvg-convert -w 96 -h 96 "$SVG_LOGO" -o /usr/share/plymouth/themes/eonluxos/emblem.png
+    cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
+fi
+
+# 4. Gerar PNGs da barra de progresso e splash usando apenas Python padrao (sem PIL)
 if command -v python3 >/dev/null 2>&1; then
-python3 - <<'PY' || true
-import os
+python3 - <<'PY'
+import os, struct, zlib
 
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except ImportError:
-    raise SystemExit(0)
+def write_png(path, w, h, buf):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    raw = bytearray()
+    stride = w * 4
+    for y in range(h):
+        raw.append(0)
+        raw.extend(buf[y * stride : (y + 1) * stride])
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
+    with open(path, "wb") as f:
+        f.write(png)
 
-BG = (6, 12, 28, 255)        # #060C1C
-ACCENT = (19, 127, 236, 255) # #137FEC
-CYAN = (56, 189, 248, 255)   # #38BDF8
-WHITE = (255, 255, 255, 255)
-MUTED = (226, 232, 240, 255)
+def solid_buf(w, h, rgba):
+    return bytearray(bytes(rgba) * (w * h))
 
-# Splash 640x480 para ISOLINUX / Plymouth
-w, h = 640, 480
-img = Image.new("RGBA", (w, h), BG)
-draw = ImageDraw.Draw(img)
+theme_dir = "/usr/share/plymouth/themes/eonluxos"
+write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
+write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
 
-# Moldura sutil azul eletrico
-draw.rectangle([16, 16, w - 17, h - 17], outline=ACCENT, width=2)
+# Fallback de emblema orbital caso rsvg-convert nao tenha gerado emblem.png
+emblem_path = os.path.join(theme_dir, "emblem.png")
+if not os.path.exists(emblem_path):
+    ew, eh = 96, 96
+    ebuf = solid_buf(ew, eh, (0, 0, 0, 0))
+    cx, cy = 48.0, 48.0
+    for y in range(eh):
+        for x in range(ew):
+            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            idx = (y * ew + x) * 4
+            if 40.0 <= d <= 44.0 or d <= 10.0:
+                ebuf[idx:idx+4] = bytes((19, 127, 236, 255))
+            elif 27.0 <= d <= 30.0:
+                ebuf[idx:idx+4] = bytes((56, 189, 248, 255))
+    write_png(emblem_path, ew, eh, ebuf)
 
-# Emblema orbital centralizado
-cx, cy = w // 2, 175
-draw.ellipse([cx - 46, cy - 46, cx + 46, cy + 46], outline=ACCENT, width=3)
-draw.ellipse([cx - 32, cy - 32, cx + 32, cy + 32], outline=CYAN, width=2)
-draw.ellipse([cx - 10, cy - 10, cx + 10, cy + 10], fill=ACCENT)
+# Splash 640x480 (#060C1C com moldura #137FEC)
+W, H = 640, 480
+canvas = solid_buf(W, H, (6, 12, 28, 255))
+for y in range(H):
+    for x in range(W):
+        if y < 4 or y >= H - 4 or (14 <= x <= 15 and 14 <= y <= H - 15) or (W - 16 <= x <= W - 15 and 14 <= y <= H - 15) or (14 <= y <= 15 and 14 <= x <= W - 15) or (H - 16 <= y <= H - 15 and 14 <= x <= W - 15):
+            idx = (y * W + x) * 4
+            canvas[idx:idx+4] = bytes((19, 127, 236, 255))
 
-try:
-    font_title = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", 28)
-    font_sub = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", 14)
-except Exception:
-    font_title = ImageFont.load_default()
-    font_sub = ImageFont.load_default()
-
-title = "EonluxOS 1.0 Core"
-subtitle = "Revigorando seu hardware com leveza e estabilidade"
-tb = draw.textbbox((0, 0), title, font=font_title)
-sb = draw.textbbox((0, 0), subtitle, font=font_sub)
-draw.text(((w - (tb[2] - tb[0])) // 2, 248), title, fill=WHITE, font=font_title)
-draw.text(((w - (sb[2] - sb[0])) // 2, 290), subtitle, fill=MUTED, font=font_sub)
-
-for out in [
-    "/usr/share/eonluxos/eonlux-splash.png",
-    "/usr/share/plymouth/themes/eonluxos/eonlux-splash.png",
-]:
-    img.convert("RGB").save(out, "PNG")
-
-# Logo pequeno (96x96) para o tema Plymouth
-logo = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
-ld = ImageDraw.Draw(logo)
-ld.ellipse([6, 6, 90, 90], outline=ACCENT, width=4)
-ld.ellipse([20, 20, 76, 76], outline=CYAN, width=2)
-ld.ellipse([38, 38, 58, 58], fill=ACCENT)
-logo.save("/usr/share/plymouth/themes/eonluxos/logo.png", "PNG")
+write_png("/usr/share/eonluxos/eonlux-splash.png", W, H, canvas)
+write_png(os.path.join(theme_dir, "eonlux-splash.png"), W, H, canvas)
 PY
 fi
 
-# 4. Configurar Plymouth com framebuffer antecipado no initramfs
+# 5. Configurar Plymouth com framebuffer antecipado no initramfs
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
@@ -98,36 +107,32 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth ]; then
     fi
 fi
 
-# 5. Configurar LightDM com autologin e transicao limpa sem conflito com getty@tty1
+# 6. Configurar LightDM para assumir diretamente o vt1 (onde o Plymouth esta ativo)
+# Remove overrides antigos que causavam bloqueio no vt7
+rm -f /etc/systemd/system/lightdm.service.d/10-eonluxos-plymouth.conf
+rm -f /etc/systemd/system/plymouth-quit.service.d/override.conf
+rm -f /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
+
 mkdir -p /etc/lightdm/lightdm.conf.d
 cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
 [LightDM]
-minimum-vt=7
+minimum-vt=1
 
 [Seat:*]
 greeter-session=lightdm-gtk-greeter
 user-session=xfce
 autologin-user=user
 autologin-user-timeout=0
-xserver-command=X -core -ardelay 250 -arinterval 30
 EOF
 
-# Impedir que getty@tty1 dispute o framebuffer com o Plymouth durante o boot,
-# mantendo tty2..tty6 disponiveis para diagnostico e garantindo o alvo grafico.
 systemctl mask getty@tty1.service || true
 systemctl unmask lightdm.service || true
+systemctl unmask plymouth-quit.service || true
+systemctl unmask plymouth-quit-wait.service || true
 systemctl enable lightdm.service || true
 systemctl set-default graphical.target || true
 
-# Drop-in no LightDM para assegurar troca de VT e encerramento limpo do Plymouth
-mkdir -p /etc/systemd/system/lightdm.service.d
-cat <<'EOF' > /etc/systemd/system/lightdm.service.d/10-eonluxos-plymouth.conf
-[Unit]
-After=systemd-user-sessions.service getty@tty1.service plymouth-quit.service
-Conflicts=getty@tty1.service
-EOF
-
-# 6. Configurar tema padrao do LightDM GTK Greeter (fallback visual)
+# 7. Configurar tema padrao do LightDM GTK Greeter (fallback visual)
 if [ -d /etc/lightdm ]; then
 cat <<'EOF' > /etc/lightdm/lightdm-gtk-greeter.conf
 [greeter]
@@ -140,7 +145,7 @@ clock-format=%H:%M
 EOF
 fi
 
-# 7. Atualizar caches de icones, aplicativos e reconstruir initramfs
+# 8. Atualizar caches de icones, aplicativos e reconstruir initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     for icondir in /usr/share/icons/hicolor /usr/share/icons/Papirus-Dark; do
         [ -d "$icondir" ] && gtk-update-icon-cache -f -t "$icondir" || true
