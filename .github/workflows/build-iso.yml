@@ -1,13 +1,6 @@
 name: Build EonluxOS Live ISO
 
 on:
-  push:
-    branches:
-      - main
-      - "feat/**"
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
