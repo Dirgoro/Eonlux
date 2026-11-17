@@ -14,13 +14,21 @@ do
 done
 
 # ==============================================================================
-# 1. ISOLINUX (BIOS Legacy) - Paleta #060C1C / #137FEC / #38BDF8 + Logo Eonlux
+# 1. ISOLINUX (BIOS Legacy) - Forca vesamenu.c32 para exibir logo + paleta Eonlux
 # ==============================================================================
 if [ -d binary/isolinux ]; then
     if [ -n "$SPLASH_SRC" ]; then
         cp -f "$SPLASH_SRC" binary/isolinux/splash.png
         cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
     fi
+
+    # Substitui menu.c32 (modo texto) por vesamenu.c32 (modo grafico com splash.png)
+    for cfg in binary/isolinux/*.cfg; do
+        if [ -f "$cfg" ]; then
+            sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
+            sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
+        fi
+    done
 
     cat <<'EOF' > binary/isolinux/stdmenu.cfg
 menu background splash.png
@@ -47,7 +55,6 @@ menu tabmsg Pressione [Tab] para editar opcoes de arranque
 EOF
 
     if [ -f binary/isolinux/menu.cfg ]; then
-        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/isolinux/menu.cfg || true
         sed -i 's/^timeout .*/timeout 50/' binary/isolinux/menu.cfg || true
     fi
 
