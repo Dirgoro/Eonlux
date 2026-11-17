@@ -1,10 +1,9 @@
-drm
-drm_kms_helper
-simpledrm
-vmwgfx
-virtio_gpu
-bochs
+# Modulos DRM/KMS para transicao instantanea bootloader -> Plymouth sem tela preta
 i915
 amdgpu
 radeon
 nouveau
+vmwgfx
+virtio_gpu
+bochs
+simpledrm
