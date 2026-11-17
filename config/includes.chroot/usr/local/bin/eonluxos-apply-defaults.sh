@@ -1,7 +1,7 @@
 #!/bin/sh
-# EonluxOS 1.0 Core - Inicializacao sincronizada do ambiente grafico e wallpaper
+# EonluxOS 1.0 Core - Inicializacao sincronizada do desktop, dock inferior e wallpaper
 
-# 1. Pinta imediatamente a janela raiz do Xorg com #060C1C antes de qualquer componente
+# 1. Pinta imediatamente a janela raiz do Xorg com #060C1C
 if command -v xsetroot >/dev/null 2>&1; then
     xsetroot -solid "#060C1C" 2>/dev/null || true
 fi
@@ -17,7 +17,19 @@ xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2
 xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 9" 2>/dev/null || true
 xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Default" 2>/dev/null || true
 
-# 4. Aplica o wallpaper oficial em TODOS os monitores detectados via xrandr e xfconf
+# 4. Ancora a dock inferior (panel-2) exatamente na borda inferior da resolucao atual
+if command -v xrandr >/dev/null 2>&1; then
+    RES=$(xrandr --current 2>/dev/null | awk '/\*/ {print $1; exit}')
+    SCR_W=$(echo "$RES" | cut -d'x' -f1)
+    SCR_H=$(echo "$RES" | cut -d'x' -f2)
+    if [ -n "$SCR_W" ] && [ -n "$SCR_H" ]; then
+        DOCK_X=$(( SCR_W / 2 ))
+        DOCK_Y=$(( SCR_H - 6 ))
+        xfconf-query -c xfce4-panel -p /panels/panel-2/position -n -t string -s "p=10;x=${DOCK_X};y=${DOCK_Y}" 2>/dev/null || true
+    fi
+fi
+
+# 5. Aplica o wallpaper oficial em TODOS os monitores detectados e recarrega o xfdesktop
 WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
 if [ -f "$WALLPAPER" ]; then
     if command -v xrandr >/dev/null 2>&1; then
@@ -36,7 +48,7 @@ if [ -f "$WALLPAPER" ]; then
     xfdesktop --reload 2>/dev/null || true
 fi
 
-# 5. Garante que os applets de rede e bluetooth estejam ativos
+# 6. Garante que os applets de rede e bluetooth estejam ativos
 if ! pgrep -x nm-applet >/dev/null 2>&1; then
     nm-applet >/dev/null 2>&1 &
 fi
@@ -45,13 +57,12 @@ if ! pgrep -x blueman-applet >/dev/null 2>&1; then
     blueman-applet >/dev/null 2>&1 &
 fi
 
-# 6. Inicia o gestor leve de janelas para caberem 100% em 1024x600
+# 7. Inicia o gestor leve de janelas para caberem 100% em 1024x600
 if [ -x /usr/local/bin/eonluxos-window-fit.sh ] && ! pgrep -f eonluxos-window-fit.sh >/dev/null 2>&1; then
     /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
 fi
 
-# 7. Aguarda painel, wallpaper e dock desenharem e so entao dispensa o Plymouth
-sleep 1
+# 8. Dispensa o Plymouth agora que painel, dock e wallpaper estao carregados
 if command -v plymouth >/dev/null 2>&1; then
     plymouth quit --retain-splash 2>/dev/null || plymouth quit 2>/dev/null || true
 fi
