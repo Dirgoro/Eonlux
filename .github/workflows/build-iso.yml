@@ -1,11 +1,14 @@
-name: Build EonluxOS 1.0 ISO
+name: Build EonluxOS Live ISO
 
 on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-
-defaults:
-  run:
-    shell: bash
 
 jobs:
   build-iso:
@@ -24,44 +27,43 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y --no-install-recommends \
+            ca-certificates \
             live-build \
             debootstrap \
             squashfs-tools \
             xorriso \
-            syslinux \
             isolinux \
             syslinux-common \
+            syslinux-utils \
             grub-pc-bin \
             grub-efi-amd64-bin \
-            grub-common \
             mtools \
             dosfstools \
+            gdisk \
             cpio \
-            gzip \
-            xz-utils \
-            ca-certificates \
-            curl \
-            kmod
+            zstd
 
       - name: Sanitize line endings (CRLF to LF), permissions and loop devices
         run: |
-          # Converte CRLF para LF apenas em arquivos de texto, ignorando .git e binários
-          find . -path ./.git -prune -o -type f -exec grep -Il '' {} + | xargs -r sed -i 's/\r$//'
+          # Converte CRLF para LF apenas em ficheiros de texto, ignorando .git e binarios
+          find . -path './.git' -prune -o -type f \
+            ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
+            ! -name '*.svgz' ! -name '*.gz' ! -name '*.xz' ! -name '*.deb' \
+            -print0 | xargs -0 -r sed -i 's/\r$//'
 
-          # Garante permissões de execução em auto/, hooks e binários locais
-          chmod +x auto/*
-          find config/hooks -type f \( -name "*.hook.chroot" -o -name "*.hook.binary" \) -exec chmod +x {} +
-          find config/includes.chroot/usr/local/bin -type f ! -name ".gitkeep" -exec chmod +x {} +
-          find config/includes.chroot/usr/local/sbin -type f ! -name ".gitkeep" -exec chmod +x {} +
+          # Garante permissao de execucao em scripts e hooks
+          find ./auto ./config -type f \( -name '*.sh' -o -name '*.hook.*' \) -print0 | xargs -0 -r chmod +x
+          if [ -d ./config/includes.chroot/usr/local/bin ]; then
+            find ./config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -r chmod +x
+          fi
+          if [ -d ./config/includes.chroot/usr/local/sbin ]; then
+            find ./config/includes.chroot/usr/local/sbin -type f -print0 | xargs -0 -r chmod +x
+          fi
 
-          # Garante nós /dev/loop* no container privilegiado para o losetup/xorriso
+          # Garante dispositivos loop disponiveis para o live-build no container
           for i in $(seq 0 7); do
-            [ -b "/dev/loop${i}" ] || mknod -m 660 "/dev/loop${i}" b 7 "${i}" || true
+            [ -e "/dev/loop$i" ] || mknod -m 660 "/dev/loop$i" b 7 "$i" || true
           done
-
-          # Exibe estrutura de config/ para auditoria no log do CI
-          echo "=== Estrutura de config/ ==="
-          find config -maxdepth 4 | sort
 
       - name: Configure live-build
         run: |
@@ -71,40 +73,33 @@ jobs:
       - name: Build ISO image
         run: |
           set -o pipefail
-          if ! lb build 2>&1 | tee build.log; then
-            echo "=================================================================="
-            echo "ERRO NO LB BUILD - 35 LINHAS ANTERIORES A 'Begin unmounting filesystems':"
-            echo "=================================================================="
-            grep -B 35 "Begin unmounting filesystems" build.log || tail -n 50 build.log
-            exit 1
-          fi
+          lb build 2>&1 | tee build.log
 
       - name: Prepare ISO artifact and SHA256 checksum
         run: |
+          mkdir -p release
           ISO_FILE=$(ls -1 *.hybrid.iso *.iso 2>/dev/null | head -n 1)
-          if [ -z "${ISO_FILE}" ]; then
-            echo "Nenhuma imagem ISO encontrada após o build."
+          if [ -z "$ISO_FILE" ]; then
+            echo "Erro: Nenhuma imagem ISO foi gerada." >&2
             exit 1
           fi
-          SAFE_REF=$(printf '%s' "${GITHUB_REF_NAME}" | tr '/' '-')
-          TARGET_ISO="eonluxos-1.0-${SAFE_REF}-amd64.iso"
-          mv "${ISO_FILE}" "${TARGET_ISO}"
-          sha256sum "${TARGET_ISO}" > "${TARGET_ISO}.sha256"
-          ls -lh "${TARGET_ISO}" "${TARGET_ISO}.sha256"
+          mv "$ISO_FILE" release/eonluxos-1.0-core-amd64.iso
+          cd release
+          sha256sum eonluxos-1.0-core-amd64.iso > eonluxos-1.0-core-amd64.iso.sha256
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eonluxos-1.0-iso-${{ github.run_number }}
+          name: eonluxos-1.0-core-amd64
           path: |
-            eonluxos-1.0-*.iso
-            eonluxos-1.0-*.iso.sha256
+            release/eonluxos-1.0-core-amd64.iso
+            release/eonluxos-1.0-core-amd64.iso.sha256
           retention-days: 7
 
       - name: Upload build.log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-failure-${{ github.run_number }}
+          name: build-log-failure
           path: build.log
-          retention-days: 5
+          if-no-files-found: ignore
