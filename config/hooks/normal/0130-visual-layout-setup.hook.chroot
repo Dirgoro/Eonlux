@@ -37,7 +37,7 @@ if [ -f "$SVG_LOGO" ] && command -v rsvg-convert >/dev/null 2>&1; then
     cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
 fi
 
-# 4. Gerar PNGs da barra de progresso e splash usando apenas Python padrao (sem PIL)
+# 4. Gerar PNGs da barra de progresso e splash usando apenas Python padrao
 if command -v python3 >/dev/null 2>&1; then
 python3 - <<'PY'
 import os, struct, zlib
@@ -63,7 +63,6 @@ theme_dir = "/usr/share/plymouth/themes/eonluxos"
 write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
 write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
 
-# Fallback de emblema orbital caso rsvg-convert nao tenha gerado emblem.png
 emblem_path = os.path.join(theme_dir, "emblem.png")
 if not os.path.exists(emblem_path):
     ew, eh = 96, 96
@@ -79,7 +78,6 @@ if not os.path.exists(emblem_path):
                 ebuf[idx:idx+4] = bytes((56, 189, 248, 255))
     write_png(emblem_path, ew, eh, ebuf)
 
-# Splash 640x480 (#060C1C com moldura #137FEC)
 W, H = 640, 480
 canvas = solid_buf(W, H, (6, 12, 28, 255))
 for y in range(H):
@@ -107,28 +105,29 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth ]; then
     fi
 fi
 
-# 6. Configurar LightDM para assumir diretamente o vt1 (onde o Plymouth esta ativo)
-# Remove overrides antigos que causavam bloqueio no vt7
+# 6. Configurar LightDM no vt7 (padrao Debian Live) e reter Plymouth ate o Xorg abrir
 rm -f /etc/systemd/system/lightdm.service.d/10-eonluxos-plymouth.conf
-rm -f /etc/systemd/system/plymouth-quit.service.d/override.conf
-rm -f /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
 
 mkdir -p /etc/lightdm/lightdm.conf.d
-cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+cat <<'EOF' > /etc/lightdm/lightdm.conf.d/99-eonluxos-autologin.conf
 [LightDM]
-minimum-vt=1
+minimum-vt=7
 
 [Seat:*]
 greeter-session=lightdm-gtk-greeter
 user-session=xfce
 autologin-user=user
 autologin-user-timeout=0
+xserver-command=X -background none
 EOF
+
+# Impede que o systemd mate o Plymouth e exponha texto no tty1 antes do Xorg assumir o vt7
+mkdir -p /etc/systemd/system/plymouth-quit.service.d /etc/systemd/system/plymouth-quit-wait.service.d
+printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit.service.d/override.conf
+printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
 
 systemctl mask getty@tty1.service || true
 systemctl unmask lightdm.service || true
-systemctl unmask plymouth-quit.service || true
-systemctl unmask plymouth-quit-wait.service || true
 systemctl enable lightdm.service || true
 systemctl set-default graphical.target || true
 
