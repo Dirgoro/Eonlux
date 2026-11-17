@@ -1,85 +1,95 @@
 #!/bin/sh
 set -eu
 
-# 1. Normaliza quebras de linha (CRLF -> LF) e permissoes nos scripts e temas
-for script in \
-    /usr/local/bin/eonluxos-apply-defaults.sh \
-    /usr/local/bin/eonluxos-window-fit.sh
+SPLASH_SRC=""
+for candidate in \
+    chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png \
+    config/includes.binary/isolinux/eonlux-splash.png \
+    config/includes.chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png
 do
-    if [ -f "$script" ]; then
-        sed -i 's/\r$//' "$script"
-        chmod 0755 "$script"
+    if [ -f "$candidate" ]; then
+        SPLASH_SRC="$candidate"
+        break
     fi
 done
 
-if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
-    sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
-fi
+# ==============================================================================
+# 1. ISOLINUX (BIOS Legacy) - Paleta #060C1C / #137FEC / #38BDF8 + Logo Eonlux
+# ==============================================================================
+if [ -d binary/isolinux ]; then
+    if [ -n "$SPLASH_SRC" ]; then
+        cp -f "$SPLASH_SRC" binary/isolinux/splash.png
+        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
+    fi
 
-# 2. Gera texturas da barra de progresso e garante fallbacks PNG do Plymouth e Bootloader
-python3 - <<'PY'
-import os, struct, zlib
+    cat <<'EOF' > binary/isolinux/stdmenu.cfg
+menu background splash.png
+menu title EonluxOS 1.0 Core
+menu color screen	37;40      #80e2e8f0 #ff060c1c std
+menu color border	30;44      #ff137fec #ff060c1c std
+menu color title	1;36;44    #ff38bdf8 #ff060c1c std
+menu color sel		7;37;40    #ffffffff #ff137fec all
+menu color unsel	37;44      #ffe2e8f0 #ff060c1c std
+menu color help		37;40      #ff94a3b8 #ff060c1c std
+menu color timeout_msg	37;40      #ff38bdf8 #ff060c1c std
+menu color timeout	1;37;40    #ffffffff #ff060c1c std
+menu color msg07	37;40      #90ffffff #ff060c1c std
+menu color tabmsg	31;40      #ff38bdf8 #ff060c1c std
 
-def write_png(path, w, h, rgba):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    raw = bytearray()
-    row = bytes(rgba) * w
-    for _ in range(h):
-        raw.append(0)
-        raw.extend(row)
-    def chunk(tag, data):
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw))) + chunk(b"IEND", b"")
-    with open(path, "wb") as f:
-        f.write(png)
+menu vshift 10
+menu rows 7
+menu helpmsgrow 19
+menu tabmsgrow 21
+menu cmdlinerow 21
+menu timeoutrow 22
+menu margin 8
+menu tabmsg Pressione [Tab] para editar opcoes de arranque
+EOF
 
-theme_dir = "/usr/share/plymouth/themes/eonluxos"
-# Trilho escuro (#16223B) e preenchimento azul eletrico (#137FEC)
-write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, (22, 34, 59, 255))
-write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, (19, 127, 236, 255))
+    if [ -f binary/isolinux/menu.cfg ]; then
+        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/isolinux/menu.cfg || true
+        sed -i 's/^timeout .*/timeout 50/' binary/isolinux/menu.cfg || true
+    fi
 
-# Garante imagem base 640x480 (#060C1C) para o bootloader caso nao exista
-splash_path = os.path.join(theme_dir, "eonlux-splash.png")
-if not os.path.exists(splash_path):
-    write_png(splash_path, 640, 480, (6, 12, 28, 255))
-PY
+    if [ -f binary/isolinux/live.cfg ]; then
+        sed -i 's/menu label .*/menu label ^Iniciar EonluxOS 1.0 Core (Modo Live)/' binary/isolinux/live.cfg || true
+    fi
 
-# 3. Instala versoes PNG rasterizadas do logotipo oficial eonluxos-logo.svg
-SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
-mkdir -p \
-    /usr/share/icons/hicolor/24x24/apps \
-    /usr/share/icons/hicolor/48x48/apps \
-    /usr/share/pixmaps
-
-if [ -f "$SVG_LOGO" ]; then
-    chmod 0644 "$SVG_LOGO"
-    if command -v rsvg-convert >/dev/null 2>&1; then
-        rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
-        rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
-    elif [ -f /usr/share/plymouth/themes/eonluxos/emblem.png ]; then
-        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/pixmaps/eonluxos-logo.png
+    if [ -f binary/isolinux/install.cfg ]; then
+        sed -i 's/Install GUI/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/isolinux/install.cfg || true
+        sed -i 's/menu label \^Install$/menu label Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/isolinux/install.cfg || true
     fi
 fi
 
-chmod 0644 /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png 2>/dev/null || true
-chmod 0644 /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png 2>/dev/null || true
-chmod 0644 /usr/share/pixmaps/eonluxos-logo.png 2>/dev/null || true
+# ==============================================================================
+# 2. GRUB (UEFI) - Paleta #060C1C / #137FEC + Logo Eonlux + Resolucao Adaptativa
+# ==============================================================================
+if [ -d binary/boot/grub ]; then
+    if [ -n "$SPLASH_SRC" ]; then
+        cp -f "$SPLASH_SRC" binary/boot/grub/splash.png
+    fi
 
-# 4. Garante o wallpaper oficial e sobrescreve os fallbacks azuis do Debian/XFCE
-WALLPAPER_DIR="/usr/share/backgrounds/eonluxos"
-WALLPAPER_FILE="${WALLPAPER_DIR}/eonlux-wallpaper.jpg"
-mkdir -p "$WALLPAPER_DIR"
+    if [ -f binary/boot/grub/grub.cfg ]; then
+        sed -i 's/Debian GNU\/Linux Live (kernel [^)]*)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/^set timeout=.*/set timeout=5/' binary/boot/grub/grub.cfg || true
 
-if [ ! -f "$WALLPAPER_FILE" ]; then
-    FOUND_WP=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | head -n 1)
-    if [ -n "$FOUND_WP" ]; then
-        cp -f "$FOUND_WP" "$WALLPAPER_FILE"
+        # Injeta paleta oficial EonluxOS (#060C1C fundo / #137FEC destaque) e imagem de fundo
+        cat <<'EOF' > /tmp/grub-eonlux-header.cfg
+set color_normal=light-gray/black
+set color_highlight=white/blue
+set menu_color_normal=light-gray/black
+set menu_color_highlight=white/blue
+if [ -f /boot/grub/splash.png ]; then
+    insmod png
+    background_image /boot/grub/splash.png
+fi
+EOF
+        cat /tmp/grub-eonlux-header.cfg binary/boot/grub/grub.cfg > /tmp/grub-merged.cfg
+        mv /tmp/grub-merged.cfg binary/boot/grub/grub.cfg
+        rm -f /tmp/grub-eonlux-header.cfg
     fi
 fi
-
-if [ -f "$WALLPAPER_FILE" ]; then
-    chmod 0644 "$WALLPAPER_FILE"
-    mkdir -p /usr/share
