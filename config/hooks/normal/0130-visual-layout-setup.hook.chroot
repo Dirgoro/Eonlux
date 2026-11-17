@@ -1,94 +1,21 @@
-#!/bin/sh
-set -eu
+# Instala versoes PNG rasterizadas a partir do eonluxos-logo.svg oficial (se rsvg-convert/inkscape/python-cairo estiverem presentes, ou fallback)
+SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+mkdir -p \
+    /usr/share/icons/hicolor/24x24/apps \
+    /usr/share/icons/hicolor/48x48/apps \
+    /usr/share/pixmaps
 
-# Normaliza quebras de linha CRLF -> LF e permissoes de execucao nos scripts EonluxOS
-for script in \
-    /usr/local/bin/eonluxos-apply-defaults.sh \
-    /usr/local/bin/eonluxos-window-fit.sh
-do
-    if [ -f "$script" ]; then
-        sed -i 's/\r$//' "$script"
-        chmod 0755 "$script"
+if [ -f "$SVG_LOGO" ]; then
+    chmod 0644 "$SVG_LOGO"
+    if command -v rsvg-convert >/dev/null 2>&1; then
+        rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
+        rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
     fi
-done
-
-if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
-    sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-# Gera texturas PNG da barra de progresso e garante icone eonluxos-logo no hicolor
-python3 - <<'PY'
-import os, struct, zlib
-
-def write_png(path, w, h, rgba):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    raw = bytearray()
-    row = bytes(rgba) * w
-    for _ in range(h):
-        raw.append(0)
-        raw.extend(row)
-    def chunk(tag, data):
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw))) + chunk(b"IEND", b"")
-    with open(path, "wb") as f:
-        f.write(png)
-
-theme_dir = "/usr/share/plymouth/themes/eonluxos"
-# Trilho escuro (#16223B) e preenchimento azul eletrico (#137FEC)
-write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, (22, 34, 59, 255))
-write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, (19, 127, 236, 255))
-PY
-
-# Garante que o systemd nao mate o Plymouth prematuramente antes do Xorg/XFCE
-mkdir -p /etc/systemd/system/plymouth-quit.service.d
-cat <<'EOF' > /etc/systemd/system/plymouth-quit.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=/bin/true
-EOF
-
-mkdir -p /etc/systemd/system/plymouth-quit-wait.service.d
-cat <<'EOF' > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=/bin/true
-EOF
-
-# Atualiza cache de icones e configura Plymouth como tema padrao
+# Atualiza o cache de icones do GTK para o Whisker Menu reconhecer imediatamente
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-    gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
-    gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark 2>/dev/null || true
-fi
-
-if command -v plymouth-set-default-theme >/dev/null 2>&1; then
-    plymouth-set-default-theme eonluxos || true
-fi
-
-# Reconstroi o initramfs incluindo FRAMEBUFFER=y, modulos KMS e o tema Plymouth atualizado
-if command -v update-initramfs >/dev/null 2>&1; then
-    update-initramfs -u -k all
-fi
-
-# Garante o diretorio e o wallpaper oficial do EonluxOS (fallback procedural caso a imagem nao exista)
-WALLPAPER_DIR="/usr/share/backgrounds/eonluxos"
-WALLPAPER_FILE="${WALLPAPER_DIR}/eonlux-wallpaper.jpg"
-mkdir -p "$WALLPAPER_DIR"
-
-# Se houver PNG/JPG no repositorio com outro nome, normaliza para eonlux-wallpaper.jpg
-if [ ! -f "$WALLPAPER_FILE" ]; then
-    FOUND_WP=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | head -n 1)
-    if [ -n "$FOUND_WP" ]; then
-        cp -f "$FOUND_WP" "$WALLPAPER_FILE"
-    fi
-fi
-
-# Substitui os caminhos padrao do Debian/XFCE para impedir o retorno ao fundo azul padrao
-if [ -f "$WALLPAPER_FILE" ]; then
-    chmod 0644 "$WALLPAPER_FILE"
-    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-verticals.png
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-shapes.svg
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-blue.jpg
-    ln -sf "$WALLPAPER_FILE" /usr/share/images/desktop-base/default
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+    gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
 fi
