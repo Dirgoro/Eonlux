@@ -16,32 +16,31 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
     sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-# 2. Rasteriza o logotipo oficial eonluxos-logo.svg em multiplos tamanhos (24, 48 e 112px)
+# 2. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth (emblem.png) e Bootloader
 SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+THEME_DIR="/usr/share/plymouth/themes/eonluxos"
+
 mkdir -p \
     /usr/share/icons/hicolor/24x24/apps \
     /usr/share/icons/hicolor/48x48/apps \
     /usr/share/pixmaps \
-    /usr/share/plymouth/themes/eonluxos
+    "$THEME_DIR"
 
-if [ -f "$SVG_LOGO" ]; then
+if [ -f "$SVG_LOGO" ] && command -v rsvg-convert >/dev/null 2>&1; then
     chmod 0644 "$SVG_LOGO"
-    if command -v rsvg-convert >/dev/null 2>&1; then
-        rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
-        rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-        rsvg-convert -w 112 -h 112 "$SVG_LOGO" -o /tmp/eonluxos-logo-112.png
-        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
-    elif [ -f /usr/share/plymouth/themes/eonluxos/emblem.png ]; then
-        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/pixmaps/eonluxos-logo.png
-    fi
+    rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
+    rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+    rsvg-convert -w 96 -h 96 "$SVG_LOGO" -o "${THEME_DIR}/emblem.png"
+    rsvg-convert -w 112 -h 112 "$SVG_LOGO" -o /tmp/eonluxos-logo-112.png
+    cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
 fi
 
 chmod 0644 /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png 2>/dev/null || true
 chmod 0644 /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png 2>/dev/null || true
 chmod 0644 /usr/share/pixmaps/eonluxos-logo.png 2>/dev/null || true
+chmod 0644 "${THEME_DIR}/emblem.png" 2>/dev/null || true
 
-# 3. Gera texturas do Plymouth e compoe eonlux-splash.png (640x480) com o logotipo oficial
+# 3. Gera texturas da barra do Plymouth e compoe eonlux-splash.png (640x480) para o bootloader
 python3 - <<'PY'
 import os, struct, zlib
 
@@ -63,6 +62,8 @@ def solid_buf(w, h, rgba):
     return bytearray(bytes(rgba) * (w * h))
 
 def read_png_rgba(path):
+    if not os.path.exists(path):
+        return None
     with open(path, "rb") as f:
         data = f.read()
     if data[:8] != b"\x89PNG\r\n\x1a\n":
@@ -127,7 +128,6 @@ theme_dir = "/usr/share/plymouth/themes/eonluxos"
 write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
 write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
 
-# Cria tela de bootloader 640x480 (#060C1C) com moldura #137FEC, realce #38BDF8 e logo centralizado no topo
 W, H = 640, 480
 canvas = solid_buf(W, H, (6, 12, 28, 255))
 
@@ -142,18 +142,15 @@ def fill_rect(x0, y0, rw, rh, rgba):
             canvas[idx+2] = b
             canvas[idx+3] = a
 
-# Faixas decorativas superior e inferior na paleta EonluxOS
-fill_rect(0, 0, W, 4, (19, 127, 236, 255))        # #137FEC
-fill_rect(0, 4, W, 1, (56, 189, 248, 255))        # #38BDF8
-fill_rect(0, H - 4, W, 4, (19, 127, 236, 255))    # #137FEC
+fill_rect(0, 0, W, 4, (19, 127, 236, 255))
+fill_rect(0, 4, W, 1, (56, 189, 248, 255))
+fill_rect(0, H - 4, W, 4, (19, 127, 236, 255))
 
-# Moldura sutil ao redor da area do menu
 fill_rect(44, 152, W - 88, 1, (19, 127, 236, 255))
 fill_rect(44, 392, W - 88, 1, (19, 127, 236, 255))
 fill_rect(44, 152, 1, 240, (19, 127, 236, 255))
 fill_rect(W - 45, 152, 1, 240, (19, 127, 236, 255))
 
-# Compõe o logotipo oficial rasterizado no topo (centralizado em X, Y=24)
 logo_png = read_png_rgba("/tmp/eonluxos-logo-112.png")
 if logo_png:
     lw, lh, lbuf = logo_png
