@@ -1,0 +1,38 @@
+/* EonluxOS 1.0 Core - Estilizacao do Painel Superior e Dock Inferior */
+
+/* Barra Superior (Panel 1) */
+#XfcePanelWindow.panel:first-child {
+    background-color: rgba(6, 12, 28, 0.96);
+    border-bottom: 1px solid #137FEC;
+    color: #E2E8F0;
+}
+
+/* Dock Inferior Flutuante (Panel 2) */
+#XfcePanelWindow#panel-2 {
+    background-color: rgba(6, 12, 28, 0.88);
+    border: 1px solid #137FEC;
+    border-radius: 16px;
+    padding: 2px 8px;
+}
+
+#XfcePanelWindow#panel-2 button {
+    border-radius: 10px;
+    padding: 3px;
+    margin: 0 2px;
+    transition: all 150ms ease-in-out;
+}
+
+#XfcePanelWindow#panel-2 button:hover {
+    background-color: rgba(19, 127, 236, 0.28);
+}
+
+/* Botao do Whisker Menu */
+#whiskermenu-button {
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 0 10px;
+}
+
+#whiskermenu-button:hover {
+    background-color: rgba(19, 127, 236, 0.25);
+}
