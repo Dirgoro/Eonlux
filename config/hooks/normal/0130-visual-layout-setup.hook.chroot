@@ -227,3 +227,17 @@ if command -v plymouth-set-default-theme >/dev/null 2>&1; then
 elif command -v update-initramfs >/dev/null 2>&1; then
     update-initramfs -u -k all
 fi
+
+# Garantir configuracao de autologin no LightDM para sessao Live sem ecra preto
+mkdir -p /etc/lightdm/lightdm.conf.d
+cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=xfce
+autologin-user=user
+autologin-user-timeout=0
+EOF
+
+# Ativar LightDM e garantir libertacao limpa do framebuffer pelo Plymouth
+systemctl enable lightdm.service || true
+systemctl enable plymouth-quit-wait.service || true
