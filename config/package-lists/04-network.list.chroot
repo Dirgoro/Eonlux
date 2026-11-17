@@ -1,8 +1,0 @@
-# Gestão de rede com e sem fios (fornece NetworkManager.service)
-network-manager
-network-manager-gnome
-wpasupplicant
-wireless-tools
-rfkill
-isc-dhcp-client
-iproute2
