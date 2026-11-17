@@ -62,7 +62,7 @@ EOF
 fi
 
 # ==============================================================================
-# 2. GRUB (UEFI) - Paleta #060C1C / #137FEC + Logo Eonlux + Resolucao Adaptativa
+# 2. GRUB (UEFI) - Paleta #060C1C / #137FEC + Logo Eonlux
 # ==============================================================================
 if [ -d binary/boot/grub ]; then
     if [ -n "$SPLASH_SRC" ]; then
@@ -77,7 +77,6 @@ if [ -d binary/boot/grub ]; then
         sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
         sed -i 's/^set timeout=.*/set timeout=5/' binary/boot/grub/grub.cfg || true
 
-        # Injeta paleta oficial EonluxOS (#060C1C fundo / #137FEC destaque) e imagem de fundo
         cat <<'EOF' > /tmp/grub-eonlux-header.cfg
 set color_normal=light-gray/black
 set color_highlight=white/blue
