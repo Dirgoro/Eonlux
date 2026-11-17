@@ -38,13 +38,11 @@ jobs:
 
       - name: Sanitize line endings (CRLF to LF), permissions and loop devices
         run: |
-          # Converte CRLF para LF apenas em ficheiros de texto, ignorando .git e binarios
           find . -path './.git' -prune -o -type f \
             ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.ico' \
             ! -name '*.svgz' ! -name '*.gz' ! -name '*.xz' ! -name '*.deb' \
             -print0 | xargs -0 -r sed -i 's/\r$//'
 
-          # Garante permissao de execucao em scripts e hooks
           find ./auto ./config -type f \( -name '*.sh' -o -name '*.hook.*' \) -print0 | xargs -0 -r chmod +x
           if [ -d ./config/includes.chroot/usr/local/bin ]; then
             find ./config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -r chmod +x
@@ -53,10 +51,19 @@ jobs:
             find ./config/includes.chroot/usr/local/sbin -type f -print0 | xargs -0 -r chmod +x
           fi
 
-          # Garante dispositivos loop disponiveis para o live-build no container
           for i in $(seq 0 7); do
             [ -e "/dev/loop$i" ] || mknod -m 660 "/dev/loop$i" b 7 "$i" || true
           done
+
+      - name: Audit package lists for Debian Trixie compatibility
+        run: |
+          echo "=== Ficheiros ativos em config/package-lists/ ==="
+          ls -la config/package-lists/
+          if grep -rnE '^(network-manager-gnome|isc-dhcp-client|plank)([[:space:]]|$)' config/package-lists/ auto/ 2>/dev/null; then
+            echo "ERRO DE AUDITORIA: Pacotes obsoletos do Debian Trixie ainda presentes nos ficheiros listados acima." >&2
+            exit 1
+          fi
+          echo "Auditoria aprovada: nenhum pacote obsoleto encontrado."
 
       - name: Configure live-build
         run: |
