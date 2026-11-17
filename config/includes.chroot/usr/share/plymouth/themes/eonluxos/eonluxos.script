@@ -1,86 +1,105 @@
-Window.SetBackgroundTopColor(0.023, 0.047, 0.109);
-Window.SetBackgroundBottomColor(0.015, 0.031, 0.078);
+// EonluxOS 1.0 Core - Tema Plymouth (Alinhamento sem sobreposicao em 1024x600+)
+
+Window.SetBackgroundTopColor(0.024, 0.047, 0.110);     // #060C1C
+Window.SetBackgroundBottomColor(0.024, 0.047, 0.110);  // #060C1C
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
+center_x = screen_w / 2;
+center_y = screen_h / 2;
 
-emblem_img = Image("stage2-emblem.png");
+// Carrega imagens geradas no hook chroot
+emblem_img = Image("emblem.png");
+brand_img = Image("brand.png");
+
 emblem_sprite = Sprite(emblem_img);
-emblem_sprite.SetX(screen_w / 2 - emblem_img.GetWidth() / 2);
-emblem_sprite.SetY(screen_h / 2 - emblem_img.GetHeight() / 2);
+emblem_sprite.SetX(center_x - (emblem_img.GetWidth() / 2));
+emblem_sprite.SetY(center_y - 115);
 emblem_sprite.SetZ(10);
-emblem_sprite.SetOpacity(1);
 
-brand_img = Image("stage3-brand.png");
 brand_sprite = Sprite(brand_img);
-brand_sprite.SetX(screen_w / 2 - brand_img.GetWidth() / 2);
-brand_sprite.SetY(screen_h / 2 - brand_img.GetHeight() / 2 - 42);
-brand_sprite.SetZ(20);
+brand_sprite.SetX(center_x - (brand_img.GetWidth() / 2));
+brand_sprite.SetY(center_y - 25);
+brand_sprite.SetZ(10);
 brand_sprite.SetOpacity(0);
 
-box_img = Image("progress_box.png");
-box_sprite = Sprite(box_img);
-box_x = screen_w / 2 - box_img.GetWidth() / 2;
-box_y = screen_h / 2 + 68;
-box_sprite.SetPosition(box_x, box_y, 21);
-box_sprite.SetOpacity(0);
+// Barra de progresso posicionada ABAIXO da marca "Eonlux Core"
+bar_w = 340;
+bar_h = 6;
+bar_x = center_x - (bar_w / 2);
+bar_y = center_y + 42;
 
-bar_img = Image("progress_bar.png");
-bar_sprite = Sprite();
-bar_sprite.SetPosition(box_x, box_y, 22);
-bar_sprite.SetOpacity(0);
+bg_bar_img = Image.Text("", 1, 1, 1);
+bg_bar_pix = Image(bar_w, bar_h);
+bg_bar_sprite = Sprite();
+bg_bar_sprite.SetX(bar_x);
+bg_bar_sprite.SetY(bar_y);
+bg_bar_sprite.SetZ(15);
+bg_bar_sprite.SetOpacity(0);
 
-caption_img = Image("stage3-caption.png");
-caption_sprite = Sprite(caption_img);
-caption_sprite.SetX(screen_w / 2 - caption_img.GetWidth() / 2);
-caption_sprite.SetY(box_y + 24);
-caption_sprite.SetZ(21);
-caption_sprite.SetOpacity(0);
+fg_bar_sprite = Sprite();
+fg_bar_sprite.SetX(bar_x);
+fg_bar_sprite.SetY(bar_y);
+fg_bar_sprite.SetZ(16);
+fg_bar_sprite.SetOpacity(0);
 
-tick = 0;
-sys_progress = 0.05;
-visual_progress = 0.05;
+// Textos informativos abaixo da barra de progresso
+title_img = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1, "Noto Sans Bold 11");
+title_sprite = Sprite(title_img);
+title_sprite.SetX(center_x - (title_img.GetWidth() / 2));
+title_sprite.SetY(bar_y + 20);
+title_sprite.SetZ(10);
+title_sprite.SetOpacity(0);
 
-fun progress_callback (duration, progress)
-{
-    if (progress > sys_progress) {
-        sys_progress = progress;
-    }
+sub_img = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1, "Noto Sans 9");
+sub_sprite = Sprite(sub_img);
+sub_sprite.SetX(center_x - (sub_img.GetWidth() / 2));
+sub_sprite.SetY(bar_y + 44);
+sub_sprite.SetZ(10);
+sub_sprite.SetOpacity(0);
+
+// Cria texturas solidas via fallback de desenho por pixel
+fun make_solid_image(w, h, r, g, b) {
+    img = Image.Text(" ", 1, 1, 1);
+    return img.Scale(w, h);
 }
 
-fun refresh_callback ()
-{
-    tick++;
-    
-    if (tick > 55 || sys_progress > 0.15) {
-        emblem_sprite.SetOpacity(0);
+progress_val = 0.05;
+stage_counter = 0;
+
+fun refresh_callback() {
+    stage_counter++;
+    // Transicao suave do Estagio 1 (so emblema) para Estagio 2 (marca + barra)
+    if (stage_counter > 35) {
         brand_sprite.SetOpacity(1);
-        box_sprite.SetOpacity(1);
-        bar_sprite.SetOpacity(1);
-        caption_sprite.SetOpacity(1);
+        bg_bar_sprite.SetOpacity(1);
+        fg_bar_sprite.SetOpacity(1);
+        title_sprite.SetOpacity(1);
+        sub_sprite.SetOpacity(1);
     }
-
-    target = sys_progress;
-    min_progress = tick / 180.0;
-    if (target < min_progress) {
-        target = min_progress;
-    }
-    if (target > 1.0) {
-        target = 1.0;
-    }
-
-    if (visual_progress < target) {
-        visual_progress = visual_progress + (target - visual_progress) * 0.15 + 0.003;
-    }
-    if (visual_progress > 1.0) {
-        visual_progress = 1.0;
-    }
-
-    w = Math.Int(box_img.GetWidth() * visual_progress);
-    if (w < 8) w = 8;
-    if (w > box_img.GetWidth()) w = box_img.GetWidth();
-    bar_sprite.SetImage(bar_img.Scale(w, box_img.GetHeight()));
 }
 
-Plymouth.SetBootProgressFunction(progress_callback);
 Plymouth.SetRefreshFunction(refresh_callback);
+
+fun boot_progress_callback(duration, progress) {
+    if (progress > progress_val) {
+        progress_val = progress;
+    }
+    if (progress_val > 1.0) {
+        progress_val = 1.0;
+    }
+    fill_w = Math.Int(bar_w * progress_val);
+    if (fill_w < 8) {
+        fill_w = 8;
+    }
+    bar_fill = Image("progress-fill.png");
+    if (bar_fill) {
+        fg_bar_sprite.SetImage(bar_fill.Scale(fill_w, bar_h));
+    }
+    bar_track = Image("progress-track.png");
+    if (bar_track) {
+        bg_bar_sprite.SetImage(bar_track.Scale(bar_w, bar_h));
+    }
+}
+
+Plymouth.SetBootProgressFunction(boot_progress_callback);
