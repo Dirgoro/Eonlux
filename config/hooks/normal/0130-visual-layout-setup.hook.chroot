@@ -1,21 +1,232 @@
-# Instala versoes PNG rasterizadas a partir do eonluxos-logo.svg oficial (se rsvg-convert/inkscape/python-cairo estiverem presentes, ou fallback)
+#!/bin/sh
+set -eu
+
+# 1. Normaliza quebras de linha (CRLF -> LF) e permissoes nos scripts e temas
+for script in \
+    /usr/local/bin/eonluxos-apply-defaults.sh \
+    /usr/local/bin/eonluxos-window-fit.sh
+do
+    if [ -f "$script" ]; then
+        sed -i 's/\r$//' "$script"
+        chmod 0755 "$script"
+    fi
+done
+
+if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
+    sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
+fi
+
+# 2. Rasteriza o logotipo oficial eonluxos-logo.svg em multiplos tamanhos (24, 48 e 112px)
 SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 mkdir -p \
     /usr/share/icons/hicolor/24x24/apps \
     /usr/share/icons/hicolor/48x48/apps \
-    /usr/share/pixmaps
+    /usr/share/pixmaps \
+    /usr/share/plymouth/themes/eonluxos
 
 if [ -f "$SVG_LOGO" ]; then
     chmod 0644 "$SVG_LOGO"
     if command -v rsvg-convert >/dev/null 2>&1; then
         rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
         rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        rsvg-convert -w 112 -h 112 "$SVG_LOGO" -o /tmp/eonluxos-logo-112.png
         cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
+    elif [ -f /usr/share/plymouth/themes/eonluxos/emblem.png ]; then
+        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        cp -f /usr/share/plymouth/themes/eonluxos/emblem.png /usr/share/pixmaps/eonluxos-logo.png
     fi
 fi
 
-# Atualiza o cache de icones do GTK para o Whisker Menu reconhecer imediatamente
+chmod 0644 /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png 2>/dev/null || true
+chmod 0644 /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png 2>/dev/null || true
+chmod 0644 /usr/share/pixmaps/eonluxos-logo.png 2>/dev/null || true
+
+# 3. Gera texturas do Plymouth e compoe eonlux-splash.png (640x480) com o logotipo oficial
+python3 - <<'PY'
+import os, struct, zlib
+
+def write_png(path, w, h, buf):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    raw = bytearray()
+    stride = w * 4
+    for y in range(h):
+        raw.append(0)
+        raw.extend(buf[y * stride : (y + 1) * stride])
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
+    with open(path, "wb") as f:
+        f.write(png)
+
+def solid_buf(w, h, rgba):
+    return bytearray(bytes(rgba) * (w * h))
+
+def read_png_rgba(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    pos = 8
+    w = h = bit_depth = color_type = 0
+    idat = bytearray()
+    while pos < len(data):
+        length = struct.unpack(">I", data[pos:pos+4])[0]
+        ctype = data[pos+4:pos+8]
+        chunk_data = data[pos+8:pos+8+length]
+        pos += 12 + length
+        if ctype == b"IHDR":
+            w, h, bit_depth, color_type, _, _, _ = struct.unpack(">IIBBBBB", chunk_data)
+        elif ctype == b"IDAT":
+            idat.extend(chunk_data)
+        elif ctype == b"IEND":
+            break
+    if bit_depth != 8 or color_type not in (2, 6):
+        return None
+    bpp = 4 if color_type == 6 else 3
+    raw = zlib.decompress(bytes(idat))
+    stride = w * bpp
+    recon = bytearray(h * stride)
+    in_pos = 0
+    for y in range(h):
+        ftype = raw[in_pos]
+        in_pos += 1
+        row_start = y * stride
+        for i in range(stride):
+            x = raw[in_pos + i]
+            a = recon[row_start + i - bpp] if i >= bpp else 0
+            b = recon[row_start - stride + i] if y > 0 else 0
+            c = recon[row_start - stride + i - bpp] if (y > 0 and i >= bpp) else 0
+            if ftype == 0:
+                val = x
+            elif ftype == 1:
+                val = (x + a) & 0xff
+            elif ftype == 2:
+                val = (x + b) & 0xff
+            elif ftype == 3:
+                val = (x + ((a + b) >> 1)) & 0xff
+            elif ftype == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                val = (x + pr) & 0xff
+            else:
+                val = x
+            recon[row_start + i] = val
+        in_pos += stride
+    out = bytearray(w * h * 4)
+    if bpp == 4:
+        out[:] = recon
+    else:
+        for i in range(w * h):
+            out[i*4:i*4+3] = recon[i*3:i*3+3]
+            out[i*4+3] = 255
+    return w, h, out
+
+theme_dir = "/usr/share/plymouth/themes/eonluxos"
+write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
+write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
+
+# Cria tela de bootloader 640x480 (#060C1C) com moldura #137FEC, realce #38BDF8 e logo centralizado no topo
+W, H = 640, 480
+canvas = solid_buf(W, H, (6, 12, 28, 255))
+
+def fill_rect(x0, y0, rw, rh, rgba):
+    r, g, b, a = rgba
+    for y in range(max(0, y0), min(H, y0 + rh)):
+        row = y * W * 4
+        for x in range(max(0, x0), min(W, x0 + rw)):
+            idx = row + x * 4
+            canvas[idx] = r
+            canvas[idx+1] = g
+            canvas[idx+2] = b
+            canvas[idx+3] = a
+
+# Faixas decorativas superior e inferior na paleta EonluxOS
+fill_rect(0, 0, W, 4, (19, 127, 236, 255))        # #137FEC
+fill_rect(0, 4, W, 1, (56, 189, 248, 255))        # #38BDF8
+fill_rect(0, H - 4, W, 4, (19, 127, 236, 255))    # #137FEC
+
+# Moldura sutil ao redor da area do menu
+fill_rect(44, 152, W - 88, 1, (19, 127, 236, 255))
+fill_rect(44, 392, W - 88, 1, (19, 127, 236, 255))
+fill_rect(44, 152, 1, 240, (19, 127, 236, 255))
+fill_rect(W - 45, 152, 1, 240, (19, 127, 236, 255))
+
+# Compõe o logotipo oficial rasterizado no topo (centralizado em X, Y=24)
+logo_png = read_png_rgba("/tmp/eonluxos-logo-112.png")
+if logo_png:
+    lw, lh, lbuf = logo_png
+    ox = (W - lw) // 2
+    oy = 24
+    for y in range(lh):
+        dy = oy + y
+        if dy < 0 or dy >= H:
+            continue
+        for x in range(lw):
+            dx = ox + x
+            if dx < 0 or dx >= W:
+                continue
+            sidx = (y * lw + x) * 4
+            alpha = lbuf[sidx + 3]
+            if alpha == 0:
+                continue
+            didx = (dy * W + dx) * 4
+            inv = 255 - alpha
+            canvas[didx]     = (lbuf[sidx]     * alpha + canvas[didx]     * inv) // 255
+            canvas[didx + 1] = (lbuf[sidx + 1] * alpha + canvas[didx + 1] * inv) // 255
+            canvas[didx + 2] = (lbuf[sidx + 2] * alpha + canvas[didx + 2] * inv) // 255
+            canvas[didx + 3] = 255
+
+write_png(os.path.join(theme_dir, "eonlux-splash.png"), W, H, canvas)
+PY
+
+rm -f /tmp/eonluxos-logo-112.png
+
+# 4. Garante o wallpaper oficial e sobrescreve os fallbacks azuis do Debian/XFCE
+WALLPAPER_DIR="/usr/share/backgrounds/eonluxos"
+WALLPAPER_FILE="${WALLPAPER_DIR}/eonlux-wallpaper.jpg"
+mkdir -p "$WALLPAPER_DIR"
+
+if [ ! -f "$WALLPAPER_FILE" ]; then
+    FOUND_WP=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | head -n 1)
+    if [ -n "$FOUND_WP" ]; then
+        cp -f "$FOUND_WP" "$WALLPAPER_FILE"
+    fi
+fi
+
+if [ -f "$WALLPAPER_FILE" ]; then
+    chmod 0644 "$WALLPAPER_FILE"
+    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-verticals.png
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-shapes.svg
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-blue.jpg
+    ln -sf "$WALLPAPER_FILE" /usr/share/images/desktop-base/default
+fi
+
+# 5. Garante framebuffer imediato e modulos KMS/DRM no initramfs
+mkdir -p /etc/initramfs-tools/conf.d
+echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
+
+for mod in i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs simpledrm; do
+    grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
+done
+
+# 6. Retem o Plymouth ate o desktop XFCE estar desenhado
+mkdir -p /etc/systemd/system/plymouth-quit.service.d /etc/systemd/system/plymouth-quit-wait.service.d
+printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit.service.d/override.conf
+printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
+
+systemctl mask getty@tty1.service 2>/dev/null || true
+
+# 7. Atualiza cache de icones GTK e fixa o tema Plymouth no initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
+fi
+
+if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+    plymouth-set-default-theme -R eonluxos || update-initramfs -u -k all
+elif command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -u -k all
 fi
