@@ -1,18 +1,43 @@
 #!/bin/sh
+set -eu
 
-set -e
+SPLASH_SRC=""
+for candidate in \
+    chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png \
+    config/includes.binary/isolinux/eonlux-splash.png \
+    config/includes.chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png
+do
+    if [ -f "$candidate" ]; then
+        SPLASH_SRC="$candidate"
+        break
+    fi
+done
 
-echo "[EonluxOS Binary Hook] Copiando eonlux-splash.png para Isolinux/GRUB..."
-
-SPLASH_SRC="chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png"
-
-if [ -f "$SPLASH_SRC" ]; then
-    if [ -d "binary/isolinux" ]; then
-        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
+# 1. Substitui o splash e as cores do ISOLINUX (BIOS)
+if [ -d binary/isolinux ]; then
+    if [ -n "$SPLASH_SRC" ]; then
         cp -f "$SPLASH_SRC" binary/isolinux/splash.png
+        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
     fi
 
-    find binary -name "splash.png" -exec cp -f "$SPLASH_SRC" {} + 2>/dev/null || true
-else
-    echo "[Aviso] eonlux-splash.png não encontrado em $SPLASH_SRC"
+    if [ -f binary/isolinux/stdmenu.cfg ]; then
+        sed -i 's/menu color screen.*/menu color screen\t37;40 #80ffffff #ff060c1c std/' binary/isolinux/stdmenu.cfg || true
+        sed -i 's/menu color border.*/menu color border\t30;44 #ff137fec #ff060c1c std/' binary/isolinux/stdmenu.cfg || true
+        sed -i 's/menu color title.*/menu color title\t1;36;44 #ffffffff #ff060c1c std/' binary/isolinux/stdmenu.cfg || true
+        sed -i 's/menu color sel.*/menu color sel\t7;37;40 #ffffffff #ff137fec all/' binary/isolinux/stdmenu.cfg || true
+        sed -i 's/menu color unsel.*/menu color unsel\t37;44 #ffe2e8f0 #ff060c1c std/' binary/isolinux/stdmenu.cfg || true
+    fi
+fi
+
+# 2. Substitui cores, fundo e titulo do GRUB (UEFI)
+if [ -d binary/boot/grub ]; then
+    if [ -n "$SPLASH_SRC" ]; then
+        cp -f "$SPLASH_SRC" binary/boot/grub/splash.png
+    fi
+
+    if [ -f binary/boot/grub/grub.cfg ]; then
+        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/set menu_color_normal=.*/set menu_color_normal=white\/black/' binary/boot/grub/grub.cfg || true
+        sed -i 's/set menu_color_highlight=.*/set menu_color_highlight=white\/blue/' binary/boot/grub/grub.cfg || true
+    fi
 fi
