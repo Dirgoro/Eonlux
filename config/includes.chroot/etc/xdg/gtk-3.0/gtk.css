@@ -1,10 +1,58 @@
 /* EonluxOS 1.0 Core - Estilizacao do Painel Superior e Dock Inferior */
 
-/* Barra Superior (Panel 1) */
+/* Barra Superior (Panel 1 - altura fixa uniforme de 32px sem degraus) */
+.xfce4-panel#XfcePanelWindow,
 #XfcePanelWindow.panel:first-child {
     background-color: rgba(6, 12, 28, 0.96);
     border-bottom: 1px solid #137FEC;
     color: #E2E8F0;
+    box-shadow: none;
+}
+
+/* Remove min-height e bordas nativas do Adwaita-dark em todos os itens da barra superior */
+.xfce4-panel#XfcePanelWindow button,
+.xfce4-panel#XfcePanelWindow .tasklist button,
+#whiskermenu-button {
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-image: none;
+    background-color: transparent;
+}
+
+/* Botao do Whisker Menu (EonluxOS) alinhado exatamente a altura da barra */
+#whiskermenu-button {
+    color: #FFFFFF;
+    font-weight: bold;
+    padding-left: 10px;
+    padding-right: 12px;
+}
+
+#whiskermenu-button:hover,
+#whiskermenu-button:checked {
+    background-color: rgba(19, 127, 236, 0.28);
+    color: #FFFFFF;
+}
+
+/* Lista de janelas abertas na barra superior */
+.xfce4-panel#XfcePanelWindow .tasklist button {
+    padding-left: 8px;
+    padding-right: 8px;
+    color: #E2E8F0;
+}
+
+.xfce4-panel#XfcePanelWindow .tasklist button:hover {
+    background-color: rgba(19, 127, 236, 0.20);
+}
+
+.xfce4-panel#XfcePanelWindow .tasklist button:checked {
+    background-color: rgba(19, 127, 236, 0.35);
+    border-bottom: 2px solid #38BDF8;
 }
 
 /* Dock Inferior Flutuante (Panel 2) */
@@ -16,23 +64,16 @@
 }
 
 #XfcePanelWindow#panel-2 button {
+    min-height: 0;
+    min-width: 0;
+    border: none;
     border-radius: 10px;
     padding: 3px;
     margin: 0 2px;
+    background-image: none;
     transition: all 150ms ease-in-out;
 }
 
 #XfcePanelWindow#panel-2 button:hover {
     background-color: rgba(19, 127, 236, 0.28);
-}
-
-/* Botao do Whisker Menu */
-#whiskermenu-button {
-    color: #FFFFFF;
-    font-weight: bold;
-    padding: 0 10px;
-}
-
-#whiskermenu-button:hover {
-    background-color: rgba(19, 127, 236, 0.25);
 }
