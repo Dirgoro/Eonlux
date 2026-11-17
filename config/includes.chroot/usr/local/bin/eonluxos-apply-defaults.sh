@@ -1,59 +1,53 @@
 #!/bin/sh
+# EonluxOS 1.0 Core - Inicializacao sincronizada do ambiente grafico (sem telas pretas)
 
-WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
+# 1. Pinta imediatamente a janela raiz do Xorg com #060C1C antes de qualquer componente
+if command -v xsetroot >/dev/null 2>&1; then
+    xsetroot -solid "#060C1C" 2>/dev/null || true
+fi
 
-xrandr --auto 2>/dev/null || true
+# 2. Ajuste automatico de resolucao via EDID (suporta 1024x600 ate Full HD)
+if command -v xrandr >/dev/null 2>&1; then
+    xrandr --auto 2>/dev/null || true
+fi
 
+# 3. Garante temas GTK, icones e fontes oficiais do EonluxOS
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
 xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 9" 2>/dev/null || true
-xfconf-query -c xsettings -p /Xft/DPI -n -t int -s 96 2>/dev/null || true
+xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Default" 2>/dev/null || true
 
-xfconf-query -c xfce4-desktop -p /desktop-icons/icon-size -n -t uint -s 30 2>/dev/null || true
-xfconf-query -c xfce4-desktop -p /desktop-icons/use-custom-font-size -n -t bool -s true 2>/dev/null || true
-xfconf-query -c xfce4-desktop -p /desktop-icons/font-size -n -t double -s 8 2>/dev/null || true
-xfconf-query -c xfce4-desktop -p /desktop-icons/single-click -n -t bool -s true 2>/dev/null || true
+# 4. Aplica o wallpaper oficial em todos os monitores/workspaces conectados
+WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
+if [ -f "$WALLPAPER" ]; then
+    for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E 'last-image$|image-path$'); do
+        xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" 2>/dev/null || true
+    done
+    xfdesktop --reload 2>/dev/null || true
+fi
 
-# Inicia applets de Wi-Fi e Bluetooth na barra superior
-pgrep -x nm-applet >/dev/null || nohup nm-applet >/dev/null 2>&1 &
-pgrep -f blueman-applet >/dev/null || nohup blueman-applet >/dev/null 2>&1 &
+# 5. Garante que a dock Plank e os applets de rede/bluetooth estejam ativos
+if ! pgrep -x plank >/dev/null 2>&1; then
+    plank >/dev/null 2>&1 &
+fi
 
-# Inicia dock Plank
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ hide-mode 'none' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ position 'bottom' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ alignment 'center' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ theme 'EonluxOS' 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ icon-size 34 2>/dev/null || true
-gsettings set net.launchpad.plank.dock.settings:/net/launchpad/plank/docks/dock1/ item-size 40 2>/dev/null || true
-pgrep -x plank >/dev/null || nohup plank >/dev/null 2>&1 &
+if ! pgrep -x nm-applet >/dev/null 2>&1; then
+    nm-applet >/dev/null 2>&1 &
+fi
 
-# Garante encaixe de todas as janelas dentro da tela (mínimo 1024x600)
-pgrep -f eonluxos-window-fit.sh >/dev/null || nohup /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
+if ! pgrep -x blueman-applet >/dev/null 2>&1; then
+    blueman-applet >/dev/null 2>&1 &
+fi
 
-# Aguarda xfdesktop e aplica o wallpaper em todas as saídas detectadas
-for i in 1 2 3 4 5 6 7 8 9 10; do
-    if pgrep -x xfdesktop >/dev/null && pgrep -x plank >/dev/null; then
-        break
-    fi
-    sleep 0.5
-done
+# 6. Inicia o gestor leve de janelas para caberem 100% em 1024x600
+if [ -x /usr/local/bin/eonluxos-window-fit.sh ] && ! pgrep -f eonluxos-window-fit.sh >/dev/null 2>&1; then
+    /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
+fi
 
-MONITORS=$(xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}')
-[ -z "$MONITORS" ] && MONITORS="0 Virtual-1 LVDS-1 eDP-1 VGA-1 HDMI-1"
+# 7. Aguarda painel, wallpaper e dock desenharem e so entao dispensa o Plymouth
+sleep 1
+if command -v plymouth >/dev/null 2>&1; then
+    plymouth quit --retain-splash 2>/dev/null || plymouth quit 2>/dev/null || true
+fi
 
-for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E "last-image$|image-path$"); do
-    xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" 2>/dev/null || true
-done
-
-for mon in $MONITORS 0 Virtual-1 LVDS-1; do
-    BASE="/backdrop/screen0/monitor${mon}/workspace0"
-    xfconf-query -c xfce4-desktop -p "${BASE}/color-style" -n -t int -s 0 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/image-style" -n -t int -s 2 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
-    xfconf-query -c xfce4-desktop -p "${BASE}/image-path" -n -t string -s "$WALLPAPER" 2>/dev/null || true
-done
-
-xfdesktop --reload 2>/dev/null || true
-sleep 1.0
-
-sudo -n /usr/local/bin/eonluxos-finish-boot.sh 2>/dev/null || true
+exit 0
