@@ -20,7 +20,6 @@ xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Default" 2>/dev/null ||
 # 4. Aplica o wallpaper oficial em TODOS os monitores detectados via xrandr e xfconf
 WALLPAPER="/usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg"
 if [ -f "$WALLPAPER" ]; then
-    # Descobre os nomes exatos das saidas conectadas (ex: Virtual-1, LVDS-1, eDP-1)
     if command -v xrandr >/dev/null 2>&1; then
         for out in $(xrandr --query 2>/dev/null | awk '/ connected/ {print $1}'); do
             for ws in 0 1 2 3; do
@@ -30,7 +29,6 @@ if [ -f "$WALLPAPER" ]; then
         done
     fi
 
-    # Atualiza tambem qualquer propriedade ja registrada pelo xfdesktop
     for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E 'last-image$|image-path$'); do
         xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" 2>/dev/null || true
     done
@@ -38,11 +36,7 @@ if [ -f "$WALLPAPER" ]; then
     xfdesktop --reload 2>/dev/null || true
 fi
 
-# 5. Garante que a dock Plank e os applets de rede/bluetooth estejam ativos
-if ! pgrep -x plank >/dev/null 2>&1; then
-    plank >/dev/null 2>&1 &
-fi
-
+# 5. Garante que os applets de rede e bluetooth estejam ativos
 if ! pgrep -x nm-applet >/dev/null 2>&1; then
     nm-applet >/dev/null 2>&1 &
 fi
