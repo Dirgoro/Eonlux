@@ -69,3 +69,26 @@ fi
 if command -v update-initramfs >/dev/null 2>&1; then
     update-initramfs -u -k all
 fi
+
+# Garante o diretorio e o wallpaper oficial do EonluxOS (fallback procedural caso a imagem nao exista)
+WALLPAPER_DIR="/usr/share/backgrounds/eonluxos"
+WALLPAPER_FILE="${WALLPAPER_DIR}/eonlux-wallpaper.jpg"
+mkdir -p "$WALLPAPER_DIR"
+
+# Se houver PNG/JPG no repositorio com outro nome, normaliza para eonlux-wallpaper.jpg
+if [ ! -f "$WALLPAPER_FILE" ]; then
+    FOUND_WP=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | head -n 1)
+    if [ -n "$FOUND_WP" ]; then
+        cp -f "$FOUND_WP" "$WALLPAPER_FILE"
+    fi
+fi
+
+# Substitui os caminhos padrao do Debian/XFCE para impedir o retorno ao fundo azul padrao
+if [ -f "$WALLPAPER_FILE" ]; then
+    chmod 0644 "$WALLPAPER_FILE"
+    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-verticals.png
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-shapes.svg
+    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-blue.jpg
+    ln -sf "$WALLPAPER_FILE" /usr/share/images/desktop-base/default
+fi
