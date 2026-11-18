@@ -1,0 +1,39 @@
+#!/bin/sh
+set -e
+
+# 1. Elimina o bloqueio de espera de rede no boot (economiza ate 10-15s)
+systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
+systemctl mask NetworkManager-wait-online.service 2>/dev/null || true
+
+# 2. Desativa servicos e timers pesados desnecessarios em hardware legado / modo Live
+for unit in \
+    apt-daily.timer \
+    apt-daily-upgrade.timer \
+    man-db.timer \
+    e2scrub_all.timer \
+    e2scrub_reap.service \
+    fstrim.timer \
+    ModemManager.service \
+    avahi-daemon.service \
+    bluetooth.service
+do
+    systemctl disable "$unit" 2>/dev/null || true
+done
+
+# 3. Mantem apenas tty2 para diagnostico e desativa tty3..tty6 para poupar RAM e tempo de init
+for tty in tty3 tty4 tty5 tty6; do
+    systemctl mask "getty@${tty}.service" 2>/dev/null || true
+done
+
+# 4. Reduz timeout de parada de servicos de 90s para 10s
+mkdir -p /etc/systemd/system.conf.d
+cat <<'EOF' > /etc/systemd/system.conf.d/10-eonluxos-fastboot.conf
+[Manager]
+DefaultTimeoutStartSec=20s
+DefaultTimeoutStopSec=10s
+EOF
+
+# 5. Usa compressao rapida zstd no initramfs (descompressao muito mais rapida em CPUs Atom)
+if [ -f /etc/initramfs-tools/initramfs.conf ]; then
+    sed -i 's/^COMPRESS=.*/COMPRESS=zstd/' /etc/initramfs-tools/initramfs.conf || true
+fi
