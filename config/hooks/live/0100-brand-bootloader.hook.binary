@@ -13,7 +13,57 @@ do
     fi
 done
 
-if [ -n "$SPLASH_SRC" ] && [ -d binary/isolinux ]; then
-    cp -f "$SPLASH_SRC" binary/isolinux/splash.png
-    cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
+if [ -d binary/isolinux ]; then
+    if [ -n "$SPLASH_SRC" ]; then
+        cp -f "$SPLASH_SRC" binary/isolinux/splash.png
+        cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
+    fi
+
+    # Troca menu.c32 (texto) por vesamenu.c32 (grafico) para exibir splash.png com o logo
+    for cfg in binary/isolinux/*.cfg; do
+        if [ -f "$cfg" ]; then
+            sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
+            sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
+        fi
+    done
+
+    cat <<'EOF' > binary/isolinux/stdmenu.cfg
+menu background splash.png
+menu title EonluxOS 1.0 Core
+menu color screen	37;40      #80e2e8f0 #ff060c1c std
+menu color border	30;44      #ff137fec #ff060c1c std
+menu color title	1;36;44    #ff38bdf8 #ff060c1c std
+menu color sel		7;37;40    #ffffffff #ff137fec all
+menu color unsel	37;44      #ffe2e8f0 #ff060c1c std
+menu color help		37;40      #ff94a3b8 #ff060c1c std
+menu color timeout_msg	37;40      #ff38bdf8 #ff060c1c std
+menu color timeout	1;37;40    #ffffffff #ff060c1c std
+menu color msg07	37;40      #90ffffff #ff060c1c std
+menu color tabmsg	31;40      #ff38bdf8 #ff060c1c std
+
+menu vshift 10
+menu rows 6
+menu helpmsgrow 18
+menu tabmsgrow 20
+menu cmdlinerow 20
+menu timeoutrow 21
+menu margin 6
+menu tabmsg Pressione [Tab] para editar opcoes de arranque
+EOF
+
+    [ -f binary/isolinux/menu.cfg ] && sed -i 's/^timeout .*/timeout 40/' binary/isolinux/menu.cfg || true
+    [ -f binary/isolinux/live.cfg ] && sed -i 's/menu label .*/menu label ^Iniciar EonluxOS 1.0 Core (Modo Live)/' binary/isolinux/live.cfg || true
+    if [ -f binary/isolinux/install.cfg ]; then
+        sed -i 's/Install GUI/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/isolinux/install.cfg || true
+        sed -i 's/menu label \^Install$/menu label Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/isolinux/install.cfg || true
+    fi
+fi
+
+if [ -d binary/boot/grub ]; then
+    [ -n "$SPLASH_SRC" ] && cp -f "$SPLASH_SRC" binary/boot/grub/splash.png
+    if [ -f binary/boot/grub/grub.cfg ]; then
+        sed -i 's/Debian GNU\/Linux Live (kernel [^)]*)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
+        sed -i 's/^set timeout=.*/set timeout=4/' binary/boot/grub/grub.cfg || true
+    fi
 fi
