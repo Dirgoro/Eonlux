@@ -27,17 +27,18 @@ if [ -f /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg ]; then
     ln -sf /usr/share/backgrounds/eonluxos/eonlux-wallpaper.jpg /usr/share/images/desktop-base/default
 fi
 
-# 3. Rasterizar o logotipo oficial SVG para icones e Plymouth (emblem.png)
+# 3. Rasterizar o logotipo oficial SVG para icones, Plymouth e Bootloader
 SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 if [ -f "$SVG_LOGO" ] && command -v rsvg-convert >/dev/null 2>&1; then
     chmod 0644 "$SVG_LOGO"
     rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
     rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
     rsvg-convert -w 96 -h 96 "$SVG_LOGO" -o /usr/share/plymouth/themes/eonluxos/emblem.png
+    rsvg-convert -w 104 -h 104 "$SVG_LOGO" -o /tmp/eonluxos-boot-logo.png
     cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
 fi
 
-# 4. Gerar PNGs da barra de progresso e splash usando apenas Python padrao
+# 4. Gerar barra do Plymouth e compor eonlux-splash.png (640x480) com o logotipo oficial no topo
 if command -v python3 >/dev/null 2>&1; then
 python3 - <<'PY'
 import os, struct, zlib
@@ -59,6 +60,69 @@ def write_png(path, w, h, buf):
 def solid_buf(w, h, rgba):
     return bytearray(bytes(rgba) * (w * h))
 
+def read_png_rgba(path):
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as f:
+        data = f.read()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    pos = 8
+    w = h = bit_depth = color_type = 0
+    idat = bytearray()
+    while pos < len(data):
+        length = struct.unpack(">I", data[pos:pos+4])[0]
+        ctype = data[pos+4:pos+8]
+        chunk_data = data[pos+8:pos+8+length]
+        pos += 12 + length
+        if ctype == b"IHDR":
+            w, h, bit_depth, color_type, _, _, _ = struct.unpack(">IIBBBBB", chunk_data)
+        elif ctype == b"IDAT":
+            idat.extend(chunk_data)
+        elif ctype == b"IEND":
+            break
+    if bit_depth != 8 or color_type not in (2, 6):
+        return None
+    bpp = 4 if color_type == 6 else 3
+    raw = zlib.decompress(bytes(idat))
+    stride = w * bpp
+    recon = bytearray(h * stride)
+    in_pos = 0
+    for y in range(h):
+        ftype = raw[in_pos]
+        in_pos += 1
+        row_start = y * stride
+        for i in range(stride):
+            x = raw[in_pos + i]
+            a = recon[row_start + i - bpp] if i >= bpp else 0
+            b = recon[row_start - stride + i] if y > 0 else 0
+            c = recon[row_start - stride + i - bpp] if (y > 0 and i >= bpp) else 0
+            if ftype == 0:
+                val = x
+            elif ftype == 1:
+                val = (x + a) & 0xff
+            elif ftype == 2:
+                val = (x + b) & 0xff
+            elif ftype == 3:
+                val = (x + ((a + b) >> 1)) & 0xff
+            elif ftype == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                val = (x + pr) & 0xff
+            else:
+                val = x
+            recon[row_start + i] = val
+        in_pos += stride
+    out = bytearray(w * h * 4)
+    if bpp == 4:
+        out[:] = recon
+    else:
+        for i in range(w * h):
+            out[i*4:i*4+3] = recon[i*3:i*3+3]
+            out[i*4+3] = 255
+    return w, h, out
+
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
 write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
 write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
@@ -78,18 +142,48 @@ if not os.path.exists(emblem_path):
                 ebuf[idx:idx+4] = bytes((56, 189, 248, 255))
     write_png(emblem_path, ew, eh, ebuf)
 
+# Compoe tela 640x480 (#060C1C) com faixa superior #137FEC/#38BDF8 e logotipo centralizado acima do menu
 W, H = 640, 480
 canvas = solid_buf(W, H, (6, 12, 28, 255))
 for y in range(H):
     for x in range(W):
-        if y < 4 or y >= H - 4 or (14 <= x <= 15 and 14 <= y <= H - 15) or (W - 16 <= x <= W - 15 and 14 <= y <= H - 15) or (14 <= y <= 15 and 14 <= x <= W - 15) or (H - 16 <= y <= H - 15 and 14 <= x <= W - 15):
-            idx = (y * W + x) * 4
+        idx = (y * W + x) * 4
+        if y < 4 or y >= H - 4:
             canvas[idx:idx+4] = bytes((19, 127, 236, 255))
+        elif y == 4:
+            canvas[idx:idx+4] = bytes((56, 189, 248, 255))
+        elif ((36 <= x <= 37 or W - 38 <= x <= W - 37) and 144 <= y <= 388) or \
+             ((144 <= y <= 145 or 387 <= y <= 388) and 36 <= x <= W - 37):
+            canvas[idx:idx+4] = bytes((19, 127, 236, 255))
+
+logo_src = "/tmp/eonluxos-boot-logo.png" if os.path.exists("/tmp/eonluxos-boot-logo.png") else emblem_path
+logo_png = read_png_rgba(logo_src)
+if logo_png:
+    lw, lh, lbuf = logo_png
+    ox = (W - lw) // 2
+    oy = 22
+    for y in range(lh):
+        dy = oy + y
+        if 0 <= dy < H:
+            for x in range(lw):
+                dx = ox + x
+                if 0 <= dx < W:
+                    sidx = (y * lw + x) * 4
+                    alpha = lbuf[sidx + 3]
+                    if alpha > 0:
+                        didx = (dy * W + dx) * 4
+                        inv = 255 - alpha
+                        canvas[didx]     = (lbuf[sidx]     * alpha + canvas[didx]     * inv) // 255
+                        canvas[didx + 1] = (lbuf[sidx + 1] * alpha + canvas[didx + 1] * inv) // 255
+                        canvas[didx + 2] = (lbuf[sidx + 2] * alpha + canvas[didx + 2] * inv) // 255
+                        canvas[didx + 3] = 255
 
 write_png("/usr/share/eonluxos/eonlux-splash.png", W, H, canvas)
 write_png(os.path.join(theme_dir, "eonlux-splash.png"), W, H, canvas)
 PY
 fi
+
+rm -f /tmp/eonluxos-boot-logo.png
 
 # 5. Configurar Plymouth com framebuffer antecipado no initramfs
 mkdir -p /etc/initramfs-tools/conf.d
@@ -105,7 +199,7 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth ]; then
     fi
 fi
 
-# 6. Configurar LightDM no vt7 (padrao Debian Live) e reter Plymouth ate o Xorg abrir
+# 6. Configurar LightDM no vt7 e reter Plymouth ate o Xorg/XFCE abrir
 rm -f /etc/systemd/system/lightdm.service.d/10-eonluxos-plymouth.conf
 
 mkdir -p /etc/lightdm/lightdm.conf.d
@@ -121,7 +215,6 @@ autologin-user-timeout=0
 xserver-command=X -background none
 EOF
 
-# Impede que o systemd mate o Plymouth e exponha texto no tty1 antes do Xorg assumir o vt7
 mkdir -p /etc/systemd/system/plymouth-quit.service.d /etc/systemd/system/plymouth-quit-wait.service.d
 printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit.service.d/override.conf
 printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
