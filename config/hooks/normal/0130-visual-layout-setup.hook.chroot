@@ -60,13 +60,14 @@ for y in range(h):
 write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Limpar overrides antigos de unidades Plymouth
+# 3. Remover overrides antigos que causavam deadlock ou tela preta no LightDM
 rm -rf /etc/systemd/system/plymouth-quit.service.d
 rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
+rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 4. Configurar LightDM com autologin no vt7 sem deadlock com plymouth-quit-wait
-mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/systemd/system/lightdm.service.d
+# 4. Configurar LightDM com autologin padrao do Debian Live (vt7)
+mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
 cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
@@ -80,19 +81,10 @@ autologin-user=user
 autologin-user-timeout=0
 EOF
 
-cat <<'EOF' > /etc/systemd/system/lightdm.service.d/override.conf
-[Unit]
-After=systemd-user-sessions.service getty@tty1.service
-Conflicts=plymouth-quit.service
-
-[Service]
-ExecStartPre=-/usr/bin/plymouth deactivate
-ExecStartPre=-/usr/bin/plymouth quit --retain-splash
-EOF
-
+# Desmascarar getty@tty1 para nao bloquear o target multi-user/graphical do systemd
+systemctl unmask getty@tty1.service || true
 systemctl set-default graphical.target || true
 systemctl enable lightdm.service || true
-systemctl mask getty@tty1.service || true
 
 # 5. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
 mkdir -p /etc/initramfs-tools/conf.d
