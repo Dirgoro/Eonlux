@@ -1,4 +1,4 @@
-/* EonluxOS 1.0 Core - Estilizacao do Painel Superior e Dock Inferior */
+/* EonluxOS 1.0 Core - Estilizacao do Painel Superior, Dock Inferior e Notificacoes */
 
 /* Barra Superior (Panel 1 - altura fixa uniforme de 32px sem degraus) */
 .xfce4-panel#XfcePanelWindow,
@@ -9,7 +9,6 @@
     box-shadow: none;
 }
 
-/* Remove min-height e bordas nativas do Adwaita-dark em todos os itens da barra superior */
 .xfce4-panel#XfcePanelWindow button,
 .xfce4-panel#XfcePanelWindow .tasklist button,
 #whiskermenu-button {
@@ -25,7 +24,6 @@
     background-color: transparent;
 }
 
-/* Botao do Whisker Menu (EonluxOS) alinhado exatamente a altura da barra */
 #whiskermenu-button {
     color: #FFFFFF;
     font-weight: bold;
@@ -39,7 +37,6 @@
     color: #FFFFFF;
 }
 
-/* Lista de janelas abertas na barra superior */
 .xfce4-panel#XfcePanelWindow .tasklist button {
     padding-left: 8px;
     padding-right: 8px;
@@ -57,10 +54,10 @@
 
 /* Dock Inferior Flutuante (Panel 2) */
 #XfcePanelWindow#panel-2 {
-    background-color: rgba(6, 12, 28, 0.88);
+    background-color: rgba(6, 12, 28, 0.90);
     border: 1px solid #137FEC;
     border-radius: 16px;
-    padding: 2px 8px;
+    padding: 3px 10px;
 }
 
 #XfcePanelWindow#panel-2 button {
@@ -68,12 +65,41 @@
     min-width: 0;
     border: none;
     border-radius: 10px;
-    padding: 3px;
-    margin: 0 2px;
+    padding: 4px;
+    margin: 0 3px;
     background-image: none;
     transition: all 150ms ease-in-out;
 }
 
 #XfcePanelWindow#panel-2 button:hover {
-    background-color: rgba(19, 127, 236, 0.28);
+    background-color: rgba(19, 127, 236, 0.30);
+}
+
+/* Baloes de Notificacao (xfce4-notifyd) na paleta oficial #060C1C / #137FEC */
+#XfceNotifyWindow {
+    background-color: rgba(6, 12, 28, 0.96);
+    border: 1px solid #137FEC;
+    border-radius: 10px;
+    color: #E2E8F0;
+}
+
+#XfceNotifyWindow label#summary {
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+#XfceNotifyWindow label#body {
+    color: #CBD5E1;
+}
+
+#XfceNotifyWindow button {
+    background-color: rgba(19, 127, 236, 0.22);
+    border: 1px solid #137FEC;
+    border-radius: 6px;
+    color: #FFFFFF;
+    padding: 3px 8px;
+}
+
+#XfceNotifyWindow button:hover {
+    background-color: #137FEC;
 }
