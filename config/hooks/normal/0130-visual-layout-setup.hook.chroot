@@ -60,12 +60,12 @@ for y in range(h):
 write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Limpar overrides antigos que travavam o Plymouth ou o Xorg rootless
+# 3. Limpar overrides antigos de unidades Plymouth
 rm -rf /etc/systemd/system/plymouth-quit.service.d
 rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 4. Configurar LightDM para assumir o vt7 e liberar o DRM do Plymouth antes do Xorg abrir
+# 4. Configurar LightDM com autologin no vt7 sem deadlock com plymouth-quit-wait
 mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/systemd/system/lightdm.service.d
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
@@ -82,7 +82,8 @@ EOF
 
 cat <<'EOF' > /etc/systemd/system/lightdm.service.d/override.conf
 [Unit]
-After=plymouth-quit-wait.service systemd-user-sessions.service
+After=systemd-user-sessions.service getty@tty1.service
+Conflicts=plymouth-quit.service
 
 [Service]
 ExecStartPre=-/usr/bin/plymouth deactivate
