@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-# 1. Normaliza quebras de linha (LF) e permissoes nos scripts EonluxOS
+# 1. Normalizar quebras de linha CRLF -> LF e permissoes nos scripts EonluxOS
 for script in \
     /usr/local/bin/eonluxos-apply-defaults.sh \
     /usr/local/bin/eonluxos-window-fit.sh
@@ -16,83 +16,76 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
     sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-# 2. Gera texturas da barra de progresso do Plymouth (#16223B / #137FEC)
+# 2. Gerar ativos PNG do Plymouth e splash ISOLINUX (#060C1C / #137FEC) sem depender de PIL
 python3 - <<'PY'
-import os, struct, zlib
+import math, os, struct, zlib
 
-def write_png(path, w, h, rgba):
+def write_png(path, w, h, pixels):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     raw = bytearray()
-    row = bytes(rgba) * w
-    for _ in range(h):
+    for y in range(h):
         raw.append(0)
-        raw.extend(row)
+        row_start = y * w * 4
+        raw.extend(pixels[row_start:row_start + w * 4])
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
     ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw))) + chunk(b"IEND", b"")
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
     with open(path, "wb") as f:
         f.write(png)
 
+def solid_png(path, w, h, rgba):
+    write_png(path, w, h, bytes(rgba) * (w * h))
+
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
-write_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, (22, 34, 59, 255))
-write_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, (19, 127, 236, 255))
+solid_png(os.path.join(theme_dir, "progress-track.png"), 16, 6, (22, 34, 59, 255))
+solid_png(os.path.join(theme_dir, "progress-fill.png"), 16, 6, (19, 127, 236, 255))
+solid_png(os.path.join(theme_dir, "eonlux-splash.png"), 640, 480, (6, 12, 28, 255))
+
+# Emblema orbital 96x96 para Plymouth
+w, h = 96, 96
+cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+buf = bytearray(w * h * 4)
+for y in range(h):
+    for x in range(w):
+        dx, dy = x - cx, y - cy
+        dist = math.hypot(dx, dy)
+        idx = (y * w + x) * 4
+        if dist <= 10.0:
+            buf[idx:idx+4] = b"\x38\xbd\xf8\xff"
+        elif 26.0 <= dist <= 29.5:
+            buf[idx:idx+4] = b"\x13\x7f\xec\xff"
+        elif 38.0 <= dist <= 40.5 and (dx + dy) > -18:
+            buf[idx:idx+4] = b"\x38\xbd\xf8\xcc"
+write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Pre-popula os ficheiros .desktop reais dos lancadores da dock (panel-2) em /etc/skel
-# Evita icones genericos verdes e elimina a necessidade de reiniciar o painel no login
-SKEL_PANEL="/etc/skel/.config/xfce4/panel"
-mkdir -p \
-    "$SKEL_PANEL/launcher-10" \
-    "$SKEL_PANEL/launcher-11" \
-    "$SKEL_PANEL/launcher-12" \
-    "$SKEL_PANEL/launcher-13" \
-    "$SKEL_PANEL/launcher-14"
+# 3. Registar LightDM como Display Manager predefinido e forcar arranque grafico
+mkdir -p /etc/X11
+echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
-copy_launcher() {
-    id="$1"
-    desktop_name="$2"
-    if [ -f "/usr/share/applications/${desktop_name}" ]; then
-        cp -f "/usr/share/applications/${desktop_name}" "$SKEL_PANEL/launcher-${id}/${desktop_name}"
-    fi
-}
+# Remover overrides antigos que possam bloquear o Xorg rootless
+rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-copy_launcher 10 "firefox-esr.desktop"
-copy_launcher 11 "thunar.desktop"
-copy_launcher 12 "xfce4-terminal.desktop"
-copy_launcher 13 "galculator.desktop"
-copy_launcher 14 "xfce-settings-manager.desktop"
+systemctl set-default graphical.target || true
+systemctl enable lightdm.service || true
+systemctl mask getty@tty1.service || true
 
-# 4. Evita duplicacao do nm-applet (mantem apenas o autostart nativo do sistema)
-if [ -f /etc/xdg/autostart/nm-applet.desktop ]; then
-    chmod 0644 /etc/xdg/autostart/nm-applet.desktop
-fi
+# 4. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
+mkdir -p /etc/initramfs-tools/conf.d
+echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
 
-# 5. Retem o Plymouth ativo ate o script de sessao XFCE dispensar o splash
-mkdir -p /etc/systemd/system/plymouth-quit.service.d
-cat <<'EOF' > /etc/systemd/system/plymouth-quit.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=/bin/true
-EOF
+for mod in i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs simpledrm; do
+    grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
+done
 
-mkdir -p /etc/systemd/system/plymouth-quit-wait.service.d
-cat <<'EOF' > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=/bin/true
-EOF
-
-# 6. Atualiza cache de icones Papirus-Dark e hicolor para evitar icones cinzentos no desktop
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
     gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark 2>/dev/null || true
 fi
 
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
-    plymouth-set-default-theme eonluxos || true
-fi
-
-if command -v update-initramfs >/dev/null 2>&1; then
+    plymouth-set-default-theme -R eonluxos || update-initramfs -u -k all
+elif command -v update-initramfs >/dev/null 2>&1; then
     update-initramfs -u -k all
 fi
