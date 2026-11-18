@@ -16,3 +16,13 @@ if [ -f /etc/systemd/system/eonluxos-memory.service ]; then
     chmod 0644 /etc/systemd/system/eonluxos-memory.service
     systemctl enable eonluxos-memory.service
 fi
+
+# Ativa o daemon earlyoom com os limiares calibrados para 2 GB de RAM
+if [ -f /etc/default/earlyoom ]; then
+    sed -i 's/\r$//' /etc/default/earlyoom
+    chmod 0644 /etc/default/earlyoom
+fi
+
+if systemctl list-unit-files | grep -q '^earlyoom.service'; then
+    systemctl enable earlyoom.service 2>/dev/null || true
+fi
