@@ -1,1 +1,10 @@
-EARLYOOM_ARGS="-r 60 -m 6,3 -s 10,5 --avoid '(^|/)(init|systemd|Xorg|lightdm|xfwm4|xfce4-session|xfce4-panel|plank)$' --prefer '(^|/)(firefox-esr|Isolated Web Co|Web Content)$'"
+# EonluxOS 1.0 Core - Configuracao Earlyoom calibrada para 2 GB RAM + ZRAM/Swap 3GB
+#
+# -m 6,3   -> SIGTERM quando RAM disponivel <= 6% (~120 MB) e SIGKILL <= 3% (~60 MB)
+# -s 45,25 -> Age assim que a ZRAM saturar e o swap em disco passar de ~55%,
+#             evitando thrashing severo antes de esgotar os 3 GB de swapfile
+# -r 60    -> Registra status de memoria a cada 60s no journal (leve e util para diagnostico)
+# --prefer -> Encerra primeiro abas pesadas de navegador antes de outros apps
+# --avoid  -> Protege o servidor grafico, gestor de janelas, painel e sessao do utilizador
+
+EARLYOOM_ARGS="-m 6,3 -s 45,25 -r 60 --prefer '(^|/)(Isolated Web Co|Web Content|firefox-esr|chromium)$' --avoid '(^|/)(Xorg|xfwm4|xfce4-panel|xfce4-session|lightdm|systemd)$'"
