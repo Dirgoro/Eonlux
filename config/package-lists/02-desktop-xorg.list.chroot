@@ -1,9 +1,12 @@
-xserver-xorg
 xserver-xorg-core
 xserver-xorg-input-all
+xserver-xorg-video-vmware
+xserver-xorg-video-qxl
 xserver-xorg-video-fbdev
 xserver-xorg-video-vesa
 xserver-xorg-video-intel
+xserver-xorg-video-amdgpu
+xserver-xorg-video-nouveau
 x11-xserver-utils
 xinit
 lightdm
