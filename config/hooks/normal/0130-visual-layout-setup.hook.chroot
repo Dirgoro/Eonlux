@@ -60,18 +60,40 @@ for y in range(h):
 write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Registar LightDM como Display Manager predefinido e forcar arranque grafico
-mkdir -p /etc/X11
+# 3. Limpar overrides antigos que travavam o Plymouth ou o Xorg rootless
+rm -rf /etc/systemd/system/plymouth-quit.service.d
+rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
+rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
+
+# 4. Configurar LightDM para assumir o vt7 e liberar o DRM do Plymouth antes do Xorg abrir
+mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/systemd/system/lightdm.service.d
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
-# Remover overrides antigos que possam bloquear o Xorg rootless
-rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
+cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+[LightDM]
+minimum-vt=7
+
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=xfce
+autologin-user=user
+autologin-user-timeout=0
+EOF
+
+cat <<'EOF' > /etc/systemd/system/lightdm.service.d/override.conf
+[Unit]
+After=plymouth-quit-wait.service systemd-user-sessions.service
+
+[Service]
+ExecStartPre=-/usr/bin/plymouth deactivate
+ExecStartPre=-/usr/bin/plymouth quit --retain-splash
+EOF
 
 systemctl set-default graphical.target || true
 systemctl enable lightdm.service || true
 systemctl mask getty@tty1.service || true
 
-# 4. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
+# 5. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
 
