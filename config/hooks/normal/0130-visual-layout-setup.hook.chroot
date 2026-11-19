@@ -89,8 +89,8 @@ rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 5. Configurar permissoes do Xorg (Xwrapper) e LightDM aguardando GPU grafica (DRM/KMS)
-mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
+# 5. Configurar permissoes do Xorg (Xwrapper), LightDM e evitar timeouts D-Bus/AT-SPI
+mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/xdg/autostart
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
 cat <<'EOF' > /etc/X11/Xwrapper.config
@@ -111,6 +111,13 @@ autologin-user=user
 autologin-user-timeout=0
 EOF
 chmod 0644 /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+
+chmod 0755 /etc/skel/.xinitrc 2>/dev/null || true
+chmod 0644 /etc/skel/.bash_profile 2>/dev/null || true
+
+if [ -f /etc/xdg/autostart/at-spi-dbus-bus.desktop ]; then
+    grep -qx "Hidden=true" /etc/xdg/autostart/at-spi-dbus-bus.desktop || echo "Hidden=true" >> /etc/xdg/autostart/at-spi-dbus-bus.desktop
+fi
 
 systemctl unmask getty@tty1.service || true
 systemctl set-default graphical.target || true
