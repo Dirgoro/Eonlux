@@ -1,4 +1,4 @@
-name: Build EonluxOS Live ISO
+name: Build EonluxOS 1.0 ISO
 
 on:
   workflow_dispatch:
