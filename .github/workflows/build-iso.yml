@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "=== Ficheiros ativos em config/package-lists/ ==="
           ls -la config/package-lists/
-          if grep -rnE '^(network-manager-gnome|isc-dhcp-client|plank)([[:space:]]|$)' config/package-lists/ auto/ 2>/dev/null; then
+          if grep -rnE '^(network-manager-gnome|isc-dhcp-client|plank|xserver-xorg-video-vmware|xserver-xorg-video-qxl)([[:space:]]|$)' config/package-lists/ auto/ 2>/dev/null; then
             echo "ERRO DE AUDITORIA: Pacotes obsoletos do Debian Trixie ainda presentes nos ficheiros listados acima." >&2
             exit 1
           fi
