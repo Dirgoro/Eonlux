@@ -60,15 +60,21 @@ for y in range(h):
 write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Remover overrides antigos que causavam deadlock ou tela preta no LightDM
+# 3. Remover overrides antigos de unidades systemd que causavam deadlock no boot
 rm -rf /etc/systemd/system/plymouth-quit.service.d
 rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 4. Configurar LightDM com autologin padrao do Debian Live (vt7)
+# 4. Configurar permissoes do Xorg (Xwrapper) e drop-in limpo do LightDM no vt7
 mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
+
+cat <<'EOF' > /etc/X11/Xwrapper.config
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+chmod 0644 /etc/X11/Xwrapper.config
 
 cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
 [LightDM]
@@ -80,8 +86,8 @@ user-session=xfce
 autologin-user=user
 autologin-user-timeout=0
 EOF
+chmod 0644 /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
 
-# Desmascarar getty@tty1 para nao bloquear o target multi-user/graphical do systemd
 systemctl unmask getty@tty1.service || true
 systemctl set-default graphical.target || true
 systemctl enable lightdm.service || true
