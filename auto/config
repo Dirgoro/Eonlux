@@ -1,10 +1,6 @@
 #!/bin/sh
 set -e
 
-# Otimizacao do SquashFS para boot rapido em hardware legado (Intel Atom / 2 GB RAM)
-# -b 512K equilibra leitura sequencial rapida sem pressionar a RAM no cache de blocos
-export MKSQUASHFS_OPTIONS="-b 512K -Xcompression-level 3"
-
 lb config noauto \
   --mode debian \
   --distribution trixie \
@@ -12,7 +8,6 @@ lb config noauto \
   --linux-flavours amd64 \
   --archive-areas "main contrib non-free non-free-firmware" \
   --apt-recommends false \
-  --compression zstd \
   --debian-installer live \
   --debian-installer-distribution trixie \
   --debian-installer-gui true \
