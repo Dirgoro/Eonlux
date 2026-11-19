@@ -89,7 +89,13 @@ rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 5. Configurar permissoes do Xorg (Xwrapper), LightDM e evitar timeouts D-Bus/AT-SPI
+# 5. Silenciar mensagens de texto no tty1 e configurar Xorg/LightDM/XFCE sem timeouts
+: > /etc/issue
+: > /etc/issue.net
+: > /etc/motd
+touch /etc/skel/.hushlogin
+chmod 0644 /etc/skel/.hushlogin
+
 mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/xdg/autostart
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
