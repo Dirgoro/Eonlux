@@ -89,13 +89,22 @@ rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 5. Silenciar mensagens de texto no tty1 e configurar Xorg/LightDM/XFCE sem timeouts
+# 5. Silenciar completamente mensagens de login no tty1 (--skip-login --noissue)
 : > /etc/issue
 : > /etc/issue.net
 : > /etc/motd
 touch /etc/skel/.hushlogin
 chmod 0644 /etc/skel/.hushlogin
 
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat <<'EOF' > /etc/systemd/system/getty@tty1.service.d/zz-eonluxos-silent.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin user --skip-login --noissue --noclear %I $TERM
+EOF
+chmod 0644 /etc/systemd/system/getty@tty1.service.d/zz-eonluxos-silent.conf
+
+# 6. Configurar permissoes do Xorg (Xwrapper), LightDM e evitar timeouts D-Bus/AT-SPI
 mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d /etc/xdg/autostart
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
@@ -129,7 +138,7 @@ systemctl unmask getty@tty1.service || true
 systemctl set-default graphical.target || true
 systemctl enable lightdm.service || true
 
-# 6. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
+# 7. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
 
