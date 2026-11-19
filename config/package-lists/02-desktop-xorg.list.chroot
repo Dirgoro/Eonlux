@@ -1,5 +1,6 @@
 xserver-xorg
 xserver-xorg-core
+xserver-xorg-legacy
 xserver-xorg-input-all
 xserver-xorg-video-fbdev
 xserver-xorg-video-vesa
@@ -9,7 +10,10 @@ xserver-xorg-video-nouveau
 libgl1-mesa-dri
 x11-xserver-utils
 xinit
+libpam-systemd
 dbus-x11
+dbus-user-session
+polkitd
 lightdm
 lightdm-gtk-greeter
 xfce4
