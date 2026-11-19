@@ -60,13 +60,36 @@ for y in range(h):
 write_png(os.path.join(theme_dir, "emblem.png"), w, h, buf)
 PY
 
-# 3. Remover overrides antigos de unidades systemd que causavam deadlock no boot
+# 3. Pre-popular lancadores da dock inferior (panel-2) em /etc/skel para exibir icones reais
+SKEL_PANEL="/etc/skel/.config/xfce4/panel"
+mkdir -p \
+    "$SKEL_PANEL/launcher-10" \
+    "$SKEL_PANEL/launcher-11" \
+    "$SKEL_PANEL/launcher-12" \
+    "$SKEL_PANEL/launcher-13" \
+    "$SKEL_PANEL/launcher-14"
+
+copy_launcher() {
+    id="$1"
+    desktop_name="$2"
+    if [ -f "/usr/share/applications/${desktop_name}" ]; then
+        cp -f "/usr/share/applications/${desktop_name}" "$SKEL_PANEL/launcher-${id}/${desktop_name}"
+    fi
+}
+
+copy_launcher 10 "firefox-esr.desktop"
+copy_launcher 11 "thunar.desktop"
+copy_launcher 12 "xfce4-terminal.desktop"
+copy_launcher 13 "galculator.desktop"
+copy_launcher 14 "xfce-settings-manager.desktop"
+
+# 4. Remover overrides antigos de unidades systemd que causavam deadlock no boot
 rm -rf /etc/systemd/system/plymouth-quit.service.d
 rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
 rm -rf /etc/systemd/system/lightdm.service.d
 rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 4. Configurar permissoes do Xorg (Xwrapper) e drop-in limpo do LightDM no vt7
+# 5. Configurar permissoes do Xorg (Xwrapper) e drop-in limpo do LightDM no vt7
 mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
@@ -92,7 +115,7 @@ systemctl unmask getty@tty1.service || true
 systemctl set-default graphical.target || true
 systemctl enable lightdm.service || true
 
-# 5. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
+# 6. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
 
