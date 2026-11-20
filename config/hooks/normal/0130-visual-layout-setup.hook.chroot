@@ -231,7 +231,7 @@ for y in range(10):
 save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 360, 10, bar_fg)
 PY
 
-# 4. Script do Plymouth com barra de progresso fluida e continua (sem Math.Int)
+# 4. Script do Plymouth com chavetas obrigatorias em todos os blocos if
 mkdir -p /usr/share/plymouth/themes/eonluxos
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
@@ -289,12 +289,18 @@ pbar.sprite.SetX(pbox.x);
 pbar.sprite.SetY(pbox.y);
 pbar.sprite.SetZ(11);
 
-current_progress = 0.06;
+current_progress = 0.08;
 fun update_bar(val) {
-    if (val < 0.06) val = 0.06;
-    if (val > 1.0) val = 1.0;
-    w = pbar.original.GetWidth() * val;
-    if (w < 8) w = 8;
+    if (val < 0.08) {
+        val = 0.08;
+    }
+    if (val > 1.0) {
+        val = 1.0;
+    }
+    w = Math.Int(pbar.original.GetWidth() * val);
+    if (w < 8) {
+        w = 8;
+    }
     pbar.scaled = pbar.original.Scale(w, pbar.original.GetHeight());
     pbar.sprite.SetImage(pbar.scaled);
 }
@@ -310,7 +316,7 @@ Plymouth.SetBootProgressFunction(progress_callback);
 
 fun refresh_callback() {
     if (current_progress < 0.98) {
-        current_progress = current_progress + 0.0018;
+        current_progress = current_progress + 0.002;
         update_bar(current_progress);
     }
 }
@@ -324,7 +330,7 @@ fi
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 5. Garante getty@tty1 ativo (para autologin) e totalmente silencioso
+# 5. Garante getty@tty1 ativo (para autologin) e oculta mensagens de login
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -336,7 +342,7 @@ StandardError=null
 EOF
 rm -f /etc/systemd/system/plymouth-quit.service /etc/systemd/system/plymouth-quit-wait.service
 
-# 6. Permite que o utilizador live inicie o Xorg diretamente no tty1
+# 6. Permite que o utilizador live inicie o Xorg diretamente
 mkdir -p /etc/X11
 cat <<'EOF' > /etc/X11/Xwrapper.config
 allowed_users=anybody
