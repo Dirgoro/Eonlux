@@ -55,15 +55,19 @@ jobs:
             [ -e "/dev/loop$i" ] || mknod -m 660 "/dev/loop$i" b 7 "$i" || true
           done
 
-      - name: Audit package lists for Debian Trixie compatibility
+      - name: Audit package lists and hooks for Debian Trixie compatibility
         run: |
           echo "=== Ficheiros ativos em config/package-lists/ ==="
           ls -la config/package-lists/
           if grep -rnE '^(network-manager-gnome|isc-dhcp-client|plank|xserver-xorg-video-vmware|xserver-xorg-video-qxl)([[:space:]]|$)' config/package-lists/ auto/ 2>/dev/null; then
-            echo "ERRO DE AUDITORIA: Pacotes obsoletos do Debian Trixie ainda presentes nos ficheiros listados acima." >&2
+            echo "ERRO DE AUDITORIA: Pacotes obsoletos do Debian Trixie encontrados nos ficheiros acima." >&2
             exit 1
           fi
-          echo "Auditoria aprovada: nenhum pacote obsoleto encontrado."
+          if grep -rn 'python3' config/hooks/live/*.hook.binary 2>/dev/null; then
+            echo "ERRO DE AUDITORIA: Hooks .hook.binary nao podem invocar python3 no container host." >&2
+            exit 1
+          fi
+          echo "Auditoria aprovada: listas de pacotes e hooks em conformidade."
 
       - name: Configure live-build
         run: |
