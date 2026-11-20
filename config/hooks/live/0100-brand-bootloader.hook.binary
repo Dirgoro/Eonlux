@@ -23,7 +23,7 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
-# 1. ISOLINUX (BIOS) - Menu minimalista transparente sobre eonlux-splash.png
+# 1. ISOLINUX (BIOS) - Menu minimalista profissional com logo e instalacao direta
 if [ -d binary/isolinux ]; then
     for mod in vesamenu.c32 libcom32.c32 libutil.c32 ldlinux.c32; do
         if [ ! -f "binary/isolinux/$mod" ]; then
@@ -46,8 +46,8 @@ MENU RESOLUTION 640 480
 MENU BACKGROUND eonlux-splash.png
 MENU TITLE 
 MENU VSHIFT 11
-MENU HSHIFT 15
-MENU WIDTH 50
+MENU HSHIFT 11
+MENU WIDTH 58
 MENU MARGIN 2
 MENU ROWS 6
 MENU TABMSGROW 25
@@ -77,11 +77,15 @@ EOF
             sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
             sed -i 's|^menu background .*|menu background eonlux-splash.png|I' "$cfg" || true
             sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
-            sed -i 's/Live system (amd64 failsafe)/EonluxOS (Modo de Seguranca)/g' "$cfg" || true
-            sed -i 's/Live system (amd64)/Iniciar EonluxOS (Modo Live)/g' "$cfg" || true
-            sed -i 's/Live (amd64 failsafe)/EonluxOS (Modo de Seguranca)/g' "$cfg" || true
-            sed -i 's/Live (amd64)/Iniciar EonluxOS (Modo Live)/g' "$cfg" || true
-            sed -i 's/Utilities/Utilidades (Utilities)/g' "$cfg" || true
+            sed -i 's/Live system (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' "$cfg" || true
+            sed -i 's/Live system (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' "$cfg" || true
+            sed -i 's/Live (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' "$cfg" || true
+            sed -i 's/Live (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' "$cfg" || true
+            sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' "$cfg" || true
+            sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' "$cfg" || true
+            sed -i 's/Install GUI/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' "$cfg" || true
+            sed -i 's/menu label \^Install$/menu label Instalar EonluxOS 1.0 Core (Modo Texto)/g' "$cfg" || true
+            sed -i 's/Utilities/Utilidades do Sistema/g' "$cfg" || true
         fi
     done
 
@@ -92,11 +96,15 @@ EOF
     done
 fi
 
-# 2. GRUB (UEFI)
+# 2. GRUB (UEFI) - Mesmo fundo minimalista e opcoes diretas de Live e Instalacao
 if [ -d binary/boot/grub ] && [ -f binary/boot/grub/grub.cfg ]; then
+    sed -i 's/Debian GNU\/Linux Live (kernel [^)]*)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
     sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
-    sed -i 's/Live system (amd64 failsafe)/EonluxOS (Modo de Seguranca)/g' binary/boot/grub/grub.cfg || true
-    sed -i 's/Live system (amd64)/Iniciar EonluxOS (Modo Live)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
     if grep -q 'terminal_output gfxterm' binary/boot/grub/grub.cfg; then
         sed -i '/terminal_output gfxterm/a insmod png\nbackground_image /boot/grub/eonlux-splash.png' binary/boot/grub/grub.cfg || true
     fi
