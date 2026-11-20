@@ -1,4 +1,4 @@
-// EonluxOS 1.0 Core - Tema Plymouth com Logo Oficial, Halo e Animacao Fluida
+// EonluxOS 1.0 Core - Tema Plymouth com Logo Oficial, Halo e Barra Fluida
 
 Window.SetBackgroundTopColor(0.016, 0.031, 0.078);     // #040814
 Window.SetBackgroundBottomColor(0.039, 0.078, 0.169);  // #0A142B
@@ -33,7 +33,7 @@ brand_title_sprite.SetX(center_x - (brand_title_img.GetWidth() / 2));
 brand_title_sprite.SetY(center_y - 30);
 brand_title_sprite.SetZ(10);
 
-// 4. Barra de progresso tonal (#0E62C7 -> #137FEC -> #38BDF8 sobre trilho #0F1D3A)
+// 4. Barra de progresso tonal (#137FEC -> #38BDF8 sobre trilho #0F1D3A)
 bar_w = 340;
 bar_h = 8;
 bar_x = center_x - (bar_w / 2);
