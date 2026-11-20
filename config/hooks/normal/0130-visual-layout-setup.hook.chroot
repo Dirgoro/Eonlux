@@ -13,13 +13,53 @@ touch /etc/skel/.hushlogin
 : > /etc/issue
 : > /etc/issue.net
 
-# 3. Gera os ativos PNG em Python 3 puro:
-#    - Bootloader: PNG RGB 24-bit (color type 2, obrigatorio para ISOLINUX vesamenu.c32)
-#    - Plymouth: PNG RGBA 32-bit (logo, progress_box, progress_bar)
+# 3. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth e Bootloader
+SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+PLY_DIR="/usr/share/plymouth/themes/eonluxos"
+
+mkdir -p \
+    /usr/share/icons/hicolor/24x24/apps \
+    /usr/share/icons/hicolor/48x48/apps \
+    /usr/share/pixmaps \
+    "$PLY_DIR"
+
+if [ -f "$SVG_LOGO" ]; then
+    chmod 0644 "$SVG_LOGO"
+    if command -v rsvg-convert >/dev/null 2>&1; then
+        rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
+        rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        rsvg-convert -w 136 -h 136 "$SVG_LOGO" -o "${PLY_DIR}/logo.png"
+        rsvg-convert -w 68 -h 68 "$SVG_LOGO" -o /tmp/eonluxos-logo-68.png
+    else
+        python3 - <<'PYSVG' || true
+import gi
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf
+
+svg = "/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
+targets = [
+    (24, "/usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png"),
+    (48, "/usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png"),
+    (136, "/usr/share/plymouth/themes/eonluxos/logo.png"),
+    (68, "/tmp/eonluxos-logo-68.png"),
+]
+for size, out in targets:
+    pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(svg, size, size, True)
+    pb.savev(out, "png", [], [])
+PYSVG
+    fi
+    if [ -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png ]; then
+        cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
+    fi
+fi
+
+# 4. Gera os ativos graficos em Python 3 puro:
+#    - Bootloader (640x480 RGB 24-bit com a logo oficial composta)
+#    - Plymouth background.png (1280x800 moderno na paleta #060C1C / #137FEC / #38BDF8)
+#    - Barras de progresso do Plymouth (progress_box.png e progress_bar.png)
 python3 - <<'PY'
 import math
 import os
-import random
 import struct
 import zlib
 
@@ -88,6 +128,69 @@ def save_png_rgba(path, w, h, buf_rgba):
         raw.extend(buf_rgba[y * stride : (y + 1) * stride])
     _write_png(path, w, h, 6, raw)
 
+def read_png_rgba(path):
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as f:
+        data = f.read()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    pos = 8
+    w = h = bit_depth = color_type = 0
+    idat = bytearray()
+    while pos < len(data):
+        length = struct.unpack(">I", data[pos:pos+4])[0]
+        ctype = data[pos+4:pos+8]
+        chunk_data = data[pos+8:pos+8+length]
+        pos += 12 + length
+        if ctype == b"IHDR":
+            w, h, bit_depth, color_type, _, _, _ = struct.unpack(">IIBBBBB", chunk_data)
+        elif ctype == b"IDAT":
+            idat.extend(chunk_data)
+        elif ctype == b"IEND":
+            break
+    if bit_depth != 8 or color_type not in (2, 6):
+        return None
+    bpp = 4 if color_type == 6 else 3
+    raw = zlib.decompress(bytes(idat))
+    stride = w * bpp
+    recon = bytearray(h * stride)
+    in_pos = 0
+    for y in range(h):
+        ftype = raw[in_pos]
+        in_pos += 1
+        row_start = y * stride
+        for i in range(stride):
+            x = raw[in_pos + i]
+            a = recon[row_start + i - bpp] if i >= bpp else 0
+            b = recon[row_start - stride + i] if y > 0 else 0
+            c = recon[row_start - stride + i - bpp] if (y > 0 and i >= bpp) else 0
+            if ftype == 0:
+                val = x
+            elif ftype == 1:
+                val = (x + a) & 0xff
+            elif ftype == 2:
+                val = (x + b) & 0xff
+            elif ftype == 3:
+                val = (x + ((a + b) >> 1)) & 0xff
+            elif ftype == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                val = (x + pr) & 0xff
+            else:
+                val = x
+            recon[row_start + i] = val
+        in_pos += stride
+    out = bytearray(w * h * 4)
+    if bpp == 4:
+        out[:] = recon
+    else:
+        for i in range(w * h):
+            out[i*4:i*4+3] = recon[i*3:i*3+3]
+            out[i*4+3] = 255
+    return w, h, out
+
 def blend_px(buf, w, h, x, y, r, g, b, a):
     if x < 0 or y < 0 or x >= w or y >= h or a <= 0:
         return
@@ -107,6 +210,21 @@ def blend_px(buf, w, h, x, y, r, g, b, a):
     buf[idx + 1] = clamp_byte((g * a + buf[idx + 1] * oa * inv // 255) // out_a)
     buf[idx + 2] = clamp_byte((b * a + buf[idx + 2] * oa * inv // 255) // out_a)
     buf[idx + 3] = clamp_byte(out_a)
+
+def blit_rgba(dst, dw, dh, src_tuple, ox, oy):
+    sw, sh, sbuf = src_tuple
+    for y in range(sh):
+        dy = oy + y
+        if dy < 0 or dy >= dh:
+            continue
+        for x in range(sw):
+            dx = ox + x
+            if dx < 0 or dx >= dw:
+                continue
+            si = (y * sw + x) * 4
+            a = sbuf[si + 3]
+            if a > 0:
+                blend_px(dst, dw, dh, dx, dy, sbuf[si], sbuf[si + 1], sbuf[si + 2], a)
 
 def draw_circle(buf, w, h, cx, cy, rad, col, fill=False, width=2):
     r2_out = (rad + width * 0.5) ** 2
@@ -142,7 +260,7 @@ def draw_text(buf, w, h, x, y, text, scale, col):
                             blend_px(buf, w, h, cx + col_i * scale + sx, y + row_i * scale + sy, *col)
         cx += 6 * scale
 
-def draw_emblem(buf, w, h, cx, cy, rad):
+def draw_fallback_emblem(buf, w, h, cx, cy, rad):
     for gr in range(rad + 18, rad, -2):
         alpha = int(32 * (1 - (gr - rad) / 18.0))
         draw_circle(buf, w, h, cx, cy, gr, (19, 127, 236, alpha), fill=True)
@@ -150,46 +268,67 @@ def draw_emblem(buf, w, h, cx, cy, rad):
     draw_circle(buf, w, h, cx, cy, rad, (19, 127, 236, 255), fill=False, width=4)
     draw_circle(buf, w, h, cx, cy, int(rad * 0.62), (56, 189, 248, 240), fill=False, width=3)
     draw_circle(buf, w, h, cx, cy, int(rad * 0.26), (224, 242, 254, 255), fill=True)
-    for deg in (225, 325, 145):
-        a = math.radians(deg)
-        sx = int(cx + (rad + 9) * math.cos(a))
-        sy = int(cy + (rad + 9) * math.sin(a))
-        draw_circle(buf, w, h, sx, sy, 3, (125, 211, 252, 255), fill=True)
 
-# A) Splash ISOLINUX / GRUB (640x480 - RGB 24-bit sem alfa)
+def paint_modern_tech_backdrop(buf, w, h):
+    # Brilho radial profundo
+    for gr in range(int(min(w, h) * 0.55), 12, -8):
+        a = int(14 * (1 - gr / (min(w, h) * 0.55)))
+        draw_circle(buf, w, h, int(w * 0.5), int(h * 0.38), gr, (19, 127, 236, a), fill=True)
+        draw_circle(buf, w, h, int(w * 0.14), int(h * 0.18), int(gr * 0.7), (56, 189, 248, max(1, a // 2)), fill=True)
+        draw_circle(buf, w, h, int(w * 0.88), int(h * 0.85), int(gr * 0.8), (14, 165, 233, max(1, a // 2)), fill=True)
+
+    # Ondas luminosas superiores direitas
+    for wave in range(8):
+        pts = []
+        x_start = int(w * 0.52)
+        for x in range(x_start, w + 16, max(10, w // 64)):
+            t = (x - x_start) / max(1.0, (w - x_start))
+            y = h * 0.30 - t * (h * 0.20) + math.sin(t * 4.4 + wave * 0.42) * (h * 0.038) + wave * (h * 0.012)
+            pts.append((x, y))
+        for i in range(len(pts) - 1):
+            draw_line(buf, w, h, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], (56, 189, 248, 82))
+        for px, py in pts[::2]:
+            draw_circle(buf, w, h, int(px), int(py), 1, (186, 230, 253, 185), fill=True)
+
+    # Ondas luminosas inferiores esquerdas
+    for wave in range(9):
+        pts = []
+        x_end = int(w * 0.66)
+        for x in range(-16, x_end, max(10, w // 64)):
+            t = (x + 16) / max(1.0, (x_end + 16))
+            y = h * 0.91 - t * (h * 0.17) + math.sin(t * 4.6 + wave * 0.38) * (h * 0.036) + wave * (h * 0.010)
+            pts.append((x, y))
+        for i in range(len(pts) - 1):
+            draw_line(buf, w, h, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], (19, 127, 236, 78))
+        for px, py in pts[::2]:
+            draw_circle(buf, w, h, int(px), int(py), 1, (125, 211, 252, 165), fill=True)
+
+    # Constelacao poligonal inferior direita
+    rel_nodes = [
+        (0.71, 0.92), (0.78, 0.83), (0.85, 0.88), (0.92, 0.77), (0.98, 0.86),
+        (0.81, 0.97), (0.90, 0.95), (0.97, 0.96), (0.74, 0.75), (0.85, 0.73),
+    ]
+    nodes = [(int(nx * w), int(ny * h)) for nx, ny in rel_nodes]
+    max_dist = min(w, h) * 0.21
+    for i in range(len(nodes)):
+        for j in range(i + 1, len(nodes)):
+            if math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]) < max_dist:
+                draw_line(buf, w, h, nodes[i][0], nodes[i][1], nodes[j][0], nodes[j][1], (56, 189, 248, 95))
+    for nx, ny in nodes:
+        draw_circle(buf, w, h, nx, ny, 3, (56, 189, 248, 105), fill=True)
+        draw_circle(buf, w, h, nx, ny, 2, (224, 242, 254, 235), fill=True)
+
+# A) Splash do Bootloader (640x480 - RGB 24-bit) com a Logo Oficial
 W, H = 640, 480
 splash = bytearray([6, 12, 28, 255] * (W * H))
-random.seed(42)
+paint_modern_tech_backdrop(splash, W, H)
 
-for gr in range(180, 10, -6):
-    a = int(12 * (1 - gr / 180.0))
-    draw_circle(splash, W, H, 90, 85, gr, (19, 127, 236, a), fill=True)
-    draw_circle(splash, W, H, 560, 410, gr, (14, 165, 233, a), fill=True)
+logo68 = read_png_rgba("/tmp/eonluxos-logo-68.png")
+if logo68:
+    blit_rgba(splash, W, H, logo68, 42, 50)
+else:
+    draw_fallback_emblem(splash, W, H, 76, 84, 30)
 
-for wave in range(7):
-    pts = [(x, 145 - ((x - 340) / 300.0) * 90 + math.sin(((x - 340) / 300.0) * 4.2 + wave * 0.45) * 18 + wave * 6) for x in range(340, 642, 10)]
-    for i in range(len(pts) - 1):
-        draw_line(splash, W, H, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], (56, 189, 248, 85))
-    for px, py in pts[::2]:
-        draw_circle(splash, W, H, int(px), int(py), 1, (186, 230, 253, 190), fill=True)
-
-for wave in range(8):
-    pts = [(x, 435 - ((x + 10) / 430.0) * 80 + math.sin(((x + 10) / 430.0) * 4.6 + wave * 0.4) * 18 + wave * 5) for x in range(-10, 420, 12)]
-    for i in range(len(pts) - 1):
-        draw_line(splash, W, H, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], (19, 127, 236, 80))
-    for px, py in pts[::2]:
-        draw_circle(splash, W, H, int(px), int(py), 1, (125, 211, 252, 170), fill=True)
-
-nodes = [(455, 445), (500, 398), (548, 422), (592, 368), (628, 412), (522, 468), (576, 455), (625, 465), (475, 358), (542, 348)]
-for i in range(len(nodes)):
-    for j in range(i + 1, len(nodes)):
-        if math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]) < 92:
-            draw_line(splash, W, H, nodes[i][0], nodes[i][1], nodes[j][0], nodes[j][1], (56, 189, 248, 105))
-for nx, ny in nodes:
-    draw_circle(splash, W, H, nx, ny, 3, (56, 189, 248, 110), fill=True)
-    draw_circle(splash, W, H, nx, ny, 2, (224, 242, 254, 240), fill=True)
-
-draw_emblem(splash, W, H, 76, 84, 30)
 draw_text(splash, W, H, 122, 62, "EonluxOS", 3, (255, 255, 255, 255))
 draw_text(splash, W, H, 140, 92, "1.0 Core", 2, (56, 189, 248, 255))
 
@@ -208,31 +347,61 @@ for y in range(188, 377):
 
 save_png_rgb("/usr/share/eonluxos/eonlux-splash.png", W, H, splash)
 
-# B) Ativos do Plymouth (RGBA 32-bit)
+# B) Fundo moderno do Plymouth (1280x800 RGBA) + Logo Oficial + Barra
 ply_dir = "/usr/share/plymouth/themes/eonluxos"
 os.makedirs(ply_dir, exist_ok=True)
 
-logo = bytearray([0, 0, 0, 0] * (160 * 160))
-draw_emblem(logo, 160, 160, 80, 80, 52)
-save_png_rgba(os.path.join(ply_dir, "logo.png"), 160, 160, logo)
+PW, PH = 1280, 800
+ply_bg = bytearray([6, 12, 28, 255] * (PW * PH))
+paint_modern_tech_backdrop(ply_bg, PW, PH)
 
-bar_bg = bytearray([20, 34, 64, 245] * (360 * 10))
-save_png_rgba(os.path.join(ply_dir, "progress_box.png"), 360, 10, bar_bg)
+# Painel central translucido sutil para destacar a logo oficial e a barra de carregamento
+card_w, card_h = 560, 380
+cx0 = (PW - card_w) // 2
+cy0 = (PH - card_h) // 2
+cx1 = cx0 + card_w
+cy1 = cy0 + card_h
 
-bar_fg = bytearray([0] * (360 * 10 * 4))
-for y in range(10):
-    for x in range(360):
-        t = x / 359.0
-        i = (y * 360 + x) * 4
+for y in range(cy0, cy1):
+    for x in range(cx0, cx1):
+        is_edge = (x == cx0 or x == cx1 - 1 or y == cy0 or y == cy1 - 1)
+        if is_edge:
+            blend_px(ply_bg, PW, PH, x, y, 56, 189, 248, 165)
+        else:
+            blend_px(ply_bg, PW, PH, x, y, 8, 18, 42, 185)
+
+# Linha superior de destaque neon no cartao central
+for y in range(cy0, cy0 + 2):
+    for x in range(cx0 + 40, cx1 - 40):
+        blend_px(ply_bg, PW, PH, x, y, 56, 189, 248, 240)
+
+save_png_rgba(os.path.join(ply_dir, "background.png"), PW, PH, ply_bg)
+
+# Fallback caso eonluxos-logo.svg nao exista
+logo_path = os.path.join(ply_dir, "logo.png")
+if not os.path.exists(logo_path):
+    logo_fb = bytearray([0, 0, 0, 0] * (136 * 136))
+    draw_fallback_emblem(logo_fb, 136, 136, 68, 68, 46)
+    save_png_rgba(logo_path, 136, 136, logo_fb)
+
+bar_bg = bytearray([18, 32, 62, 245] * (380 * 8))
+save_png_rgba(os.path.join(ply_dir, "progress_box.png"), 380, 8, bar_bg)
+
+bar_fg = bytearray([0] * (380 * 8 * 4))
+for y in range(8):
+    for x in range(380):
+        t = x / 379.0
+        i = (y * 380 + x) * 4
         bar_fg[i] = int(19 + (56 - 19) * t)
         bar_fg[i + 1] = int(127 + (189 - 127) * t)
         bar_fg[i + 2] = int(236 + (248 - 236) * t)
         bar_fg[i + 3] = 255
-save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 360, 10, bar_fg)
+save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 380, 8, bar_fg)
 PY
 
-# 4. Script do Plymouth com chavetas obrigatorias e barra progressiva ate 100%
-mkdir -p /usr/share/plymouth/themes/eonluxos
+rm -f /tmp/eonluxos-logo-68.png
+
+# 5. Script do Plymouth com fundo moderno redimensionavel (1024x600 ate Full HD) + Logo Oficial
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
 Name=EonluxOS
@@ -251,34 +420,45 @@ Window.SetBackgroundBottomColor(0.0235, 0.0470, 0.1098);
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
+// Fundo moderno escalado proporcionalmente a resolucao real do monitor (EDID)
+bg.raw = Image("background.png");
+if (bg.raw) {
+    bg.image = bg.raw.Scale(screen_w, screen_h);
+    bg.sprite = Sprite(bg.image);
+    bg.sprite.SetX(0);
+    bg.sprite.SetY(0);
+    bg.sprite.SetZ(1);
+}
+
+// Logotipo oficial do EonluxOS centralizado
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetX(screen_w / 2 - logo.image.GetWidth() / 2);
-logo.sprite.SetY(screen_h / 2 - 145);
+logo.sprite.SetY(screen_h / 2 - 148);
 logo.sprite.SetZ(10);
 
 title.image = Image.Text("EonluxOS 1.0 Core", 1.0, 1.0, 1.0, 1.0, "Noto Sans Bold 16");
 title.sprite = Sprite(title.image);
 title.sprite.SetX(screen_w / 2 - title.image.GetWidth() / 2);
-title.sprite.SetY(screen_h / 2 + 25);
+title.sprite.SetY(screen_h / 2 + 12);
 title.sprite.SetZ(10);
 
 sub1.image = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1.0, "Noto Sans 11");
 sub1.sprite = Sprite(sub1.image);
 sub1.sprite.SetX(screen_w / 2 - sub1.image.GetWidth() / 2);
-sub1.sprite.SetY(screen_h / 2 + 62);
+sub1.sprite.SetY(screen_h / 2 + 52);
 sub1.sprite.SetZ(10);
 
 sub2.image = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1.0, "Noto Sans 9");
 sub2.sprite = Sprite(sub2.image);
 sub2.sprite.SetX(screen_w / 2 - sub2.image.GetWidth() / 2);
-sub2.sprite.SetY(screen_h / 2 + 86);
+sub2.sprite.SetY(screen_h / 2 + 76);
 sub2.sprite.SetZ(10);
 
 pbox.image = Image("progress_box.png");
 pbox.sprite = Sprite(pbox.image);
 pbox.x = screen_w / 2 - pbox.image.GetWidth() / 2;
-pbox.y = screen_h / 2 + 122;
+pbox.y = screen_h / 2 + 114;
 pbox.sprite.SetX(pbox.x);
 pbox.sprite.SetY(pbox.y);
 pbox.sprite.SetZ(10);
@@ -335,7 +515,7 @@ fi
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 5. Garante getty@tty1 silencioso e mascara plymouth-quit para reter o splash ate o XFCE abrir
+# 6. Garante getty@tty1 silencioso e mascara plymouth-quit para reter o splash ate o XFCE abrir
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -348,14 +528,14 @@ EOF
 ln -sf /dev/null /etc/systemd/system/plymouth-quit.service
 ln -sf /dev/null /etc/systemd/system/plymouth-quit-wait.service
 
-# 6. Permite que o utilizador live inicie o Xorg diretamente
+# 7. Permite que o utilizador live inicie o Xorg diretamente
 mkdir -p /etc/X11
 cat <<'EOF' > /etc/X11/Xwrapper.config
 allowed_users=anybody
 needs_root_rights=yes
 EOF
 
-# 7. Atualiza cache de icones GTK e reconstroi o initramfs
+# 8. Atualiza cache de icones GTK e reconstroi o initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
