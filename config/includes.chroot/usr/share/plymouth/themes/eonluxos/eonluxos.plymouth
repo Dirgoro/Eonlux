@@ -1,6 +1,6 @@
 [Plymouth Theme]
-Name=EonluxOS Splash
-Description=Tema de boot com logotipo e barra de carregamento para EonluxOS
+Name=EonluxOS 1.0 Core
+Description=Boot grafico minimalista EonluxOS 1.0 Core
 ModuleName=script
 
 [script]
