@@ -1,5 +1,5 @@
 #!/bin/sh
-# EonluxOS 1.0 Core - Configuracao sincronizada da sessao grafica (POSIX sh)
+# EonluxOS 1.0 Core - Inicializacao sincronizada da sessao grafica (POSIX sh)
 
 [ -z "$DISPLAY" ] && exit 0
 
@@ -18,15 +18,16 @@ if command -v xrandr >/dev/null 2>&1; then
     xrandr --auto 2>/dev/null || true
 fi
 
-# 2. Aplicar temas, fontes, dock centralizada e wallpaper oficiais do EonluxOS
+# 2. Aplica temas escuros, fontes, notificacoes, dock centralizada e wallpaper
 if command -v xfconf-query >/dev/null 2>&1; then
     xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
     xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
     xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Noto Sans 9" 2>/dev/null || true
     xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Default-hdpi" 2>/dev/null || true
     xfconf-query -c xfwm4 -p /general/title_font -n -t string -s "Noto Sans Bold 9" 2>/dev/null || true
+    xfconf-query -c xfce4-notifyd -p /theme -n -t string -s "Smoke" 2>/dev/null || true
 
-    # Centralizar dock inferior (panel-2) conforme a largura real do monitor
+    # Centraliza dock inferior (panel-2) conforme a largura real do monitor
     if command -v xrandr >/dev/null 2>&1; then
         RES=$(xrandr --current 2>/dev/null | awk '/\*/ {print $1; exit}')
         SCR_W=$(echo "$RES" | cut -d'x' -f1)
@@ -43,21 +44,25 @@ if command -v xfconf-query >/dev/null 2>&1; then
     xfconf-query -c xfce4-desktop -p /desktop-icons/single-click -n -t bool -s true 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p /desktop-icons/file-icons/show-filesystem -n -t bool -s false 2>/dev/null || true
 
-    # Aplicar wallpaper proporcional em todos os monitores e workspaces detectados
+    # Aplica wallpaper proporcional em todos os monitores e workspaces detectados
     if [ -f "$WALLPAPER" ]; then
-        for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E '/last-image$'); do
+        if command -v xrandr >/dev/null 2>&1; then
+            for out in $(xrandr --query 2>/dev/null | awk '/ connected/ {print $1}'); do
+                for ws in 0 1 2 3; do
+                    xfconf-query -c xfce4-desktop -p "/backdrop/screen0/monitor${out}/workspace${ws}/last-image" -n -t string -s "$WALLPAPER" 2>/dev/null || true
+                    xfconf-query -c xfce4-desktop -p "/backdrop/screen0/monitor${out}/workspace${ws}/image-style" -n -t int -s 5 2>/dev/null || true
+                done
+            done
+        fi
+        for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E '/last-image$|/image-path$'); do
             xfconf-query -c xfce4-desktop -p "$prop" -s "$WALLPAPER" 2>/dev/null || true
-        done
-        for style_prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E '/image-style$'); do
-            xfconf-query -c xfce4-desktop -p "$style_prop" -s 5 2>/dev/null || true
         done
         xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/last-image -n -t string -s "$WALLPAPER" 2>/dev/null || true
         xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/image-style -n -t int -s 5 2>/dev/null || true
     fi
 fi
 
-# 3. Aguardar bandeja do sistema (systray) do painel superior antes de iniciar applets
-sleep 1
+# 3. Inicia applets de rede, Bluetooth e dock Plank (se disponivel)
 if command -v nm-applet >/dev/null 2>&1; then
     pgrep -x nm-applet >/dev/null 2>&1 || nm-applet >/dev/null 2>&1 &
 fi
@@ -66,9 +71,21 @@ if command -v blueman-applet >/dev/null 2>&1; then
     pgrep -x blueman-applet >/dev/null 2>&1 || blueman-applet >/dev/null 2>&1 &
 fi
 
-# 4. Iniciar daemon de ajuste automatico de janelas para telas 1024x600
+if command -v plank >/dev/null 2>&1; then
+    pgrep -x plank >/dev/null 2>&1 || plank >/dev/null 2>&1 &
+fi
+
+# 4. Inicia daemon de ajuste automatico de janelas para telas 1024x600
 if [ -x /usr/local/bin/eonluxos-window-fit.sh ]; then
     pgrep -f eonluxos-window-fit.sh >/dev/null 2>&1 || /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
+fi
+
+# 5. Garante que o papel de parede e paineis estejam renderizados antes de fechar o Plymouth
+xfdesktop --reload >/dev/null 2>&1 || true
+sleep 2
+
+if command -v plymouth >/dev/null 2>&1; then
+    plymouth quit 2>/dev/null || true
 fi
 
 touch "$STAMP_FILE"
