@@ -3,7 +3,7 @@
 /* Barra Superior (Panel 1 - altura fixa uniforme de 32px sem degraus) */
 .xfce4-panel#XfcePanelWindow,
 #XfcePanelWindow.panel:first-child {
-    background-color: rgba(6, 12, 28, 0.96);
+    background-image: linear-gradient(to bottom, rgba(4, 8, 20, 0.98), rgba(10, 20, 43, 0.95));
     border-bottom: 1px solid #137FEC;
     color: #E2E8F0;
     box-shadow: none;
@@ -54,7 +54,7 @@
 
 /* Dock Inferior Flutuante (Panel 2) */
 #XfcePanelWindow#panel-2 {
-    background-color: rgba(6, 12, 28, 0.90);
+    background-image: linear-gradient(to bottom, rgba(15, 29, 58, 0.92), rgba(6, 12, 28, 0.95));
     border: 1px solid #137FEC;
     border-radius: 16px;
     padding: 3px 10px;
@@ -75,7 +75,33 @@
     background-color: rgba(19, 127, 236, 0.30);
 }
 
-/* Baloes de Notificacao (xfce4-notifyd) na paleta oficial #060C1C / #137FEC */
+/* Janela do Whisker Menu e Menus de Contexto */
+#whiskermenu-window,
+menu,
+.context-menu {
+    background-color: #081024;
+    border: 1px solid #1B3566;
+    color: #E2E8F0;
+}
+
+#whiskermenu-window entry {
+    background-color: #0F1D3A;
+    border: 1px solid #1E3A6E;
+    color: #FFFFFF;
+    border-radius: 8px;
+}
+
+#whiskermenu-window entry:focus {
+    border-color: #38BDF8;
+}
+
+menu menuitem:hover,
+.context-menu menuitem:hover {
+    background-color: #137FEC;
+    color: #FFFFFF;
+}
+
+/* Baloes de Notificacao (xfce4-notifyd) */
 #XfceNotifyWindow {
     background-color: rgba(6, 12, 28, 0.96);
     border: 1px solid #137FEC;
@@ -104,7 +130,6 @@
     background-color: #137FEC;
 }
 
-/* Fallback escuro para dialogos nativos do xfce4-session */
 .xfce4-session-logout,
 dialog.background {
     background-color: #060C1C;
