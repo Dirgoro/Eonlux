@@ -6,10 +6,12 @@ find /etc/skel /etc/xdg /etc/plymouth /usr/share/plymouth /usr/local/bin -type f
     sed -i 's/\r$//' "$file" 2>/dev/null || true
 done
 
-# 2. Garante permissao de execucao nos scripts e silencia MOTD no autologin
+# 2. Garante permissao de execucao nos scripts e silencia banners no autologin
 chmod +x /usr/local/bin/eonluxos-* 2>/dev/null || true
 chmod +x /etc/skel/.xinitrc 2>/dev/null || true
 touch /etc/skel/.hushlogin
+: > /etc/issue
+: > /etc/issue.net
 
 # 3. Gera os ativos PNG em Python 3 puro:
 #    - Bootloader: PNG RGB 24-bit (color type 2, obrigatorio para ISOLINUX vesamenu.c32)
@@ -67,7 +69,6 @@ def _write_png(path, w, h, color_type, raw_rows):
         f.write(png)
 
 def save_png_rgb(path, w, h, buf_rgba):
-    # Color type 2 (RGB 24-bit sem alfa - compativel com ISOLINUX vesamenu.c32)
     raw = bytearray()
     for y in range(h):
         raw.append(0)
@@ -80,7 +81,6 @@ def save_png_rgb(path, w, h, buf_rgba):
     _write_png(path, w, h, 2, raw)
 
 def save_png_rgba(path, w, h, buf_rgba):
-    # Color type 6 (RGBA 32-bit - compativel com Plymouth)
     raw = bytearray()
     stride = w * 4
     for y in range(h):
@@ -156,18 +156,16 @@ def draw_emblem(buf, w, h, cx, cy, rad):
         sy = int(cy + (rad + 9) * math.sin(a))
         draw_circle(buf, w, h, sx, sy, 3, (125, 211, 252, 255), fill=True)
 
-# A) Splash ISOLINUX / GRUB (640x480 - RGB 24-bit sem alfa!)
+# A) Splash ISOLINUX / GRUB (640x480 - RGB 24-bit sem alfa)
 W, H = 640, 480
 splash = bytearray([6, 12, 28, 255] * (W * H))
 random.seed(42)
 
-# Luz ambiental
 for gr in range(180, 10, -6):
     a = int(12 * (1 - gr / 180.0))
     draw_circle(splash, W, H, 90, 85, gr, (19, 127, 236, a), fill=True)
     draw_circle(splash, W, H, 560, 410, gr, (14, 165, 233, a), fill=True)
 
-# Ondas de particulas
 for wave in range(7):
     pts = [(x, 145 - ((x - 340) / 300.0) * 90 + math.sin(((x - 340) / 300.0) * 4.2 + wave * 0.45) * 18 + wave * 6) for x in range(340, 642, 10)]
     for i in range(len(pts) - 1):
@@ -182,7 +180,6 @@ for wave in range(8):
     for px, py in pts[::2]:
         draw_circle(splash, W, H, int(px), int(py), 1, (125, 211, 252, 170), fill=True)
 
-# Malha poligonal no canto inferior direito
 nodes = [(455, 445), (500, 398), (548, 422), (592, 368), (628, 412), (522, 468), (576, 455), (625, 465), (475, 358), (542, 348)]
 for i in range(len(nodes)):
     for j in range(i + 1, len(nodes)):
@@ -192,18 +189,15 @@ for nx, ny in nodes:
     draw_circle(splash, W, H, nx, ny, 3, (56, 189, 248, 110), fill=True)
     draw_circle(splash, W, H, nx, ny, 2, (224, 242, 254, 240), fill=True)
 
-# Logo + Titulo no topo esquerdo
 draw_emblem(splash, W, H, 76, 84, 30)
 draw_text(splash, W, H, 122, 62, "EonluxOS", 3, (255, 255, 255, 255))
 draw_text(splash, W, H, 140, 92, "1.0 Core", 2, (56, 189, 248, 255))
 
-# Frase motivacional no topo direito
 line1 = "Dê uma nova vida ao seu computador."
 line2 = "Leve, rápido e livre de verdade!"
 draw_text(splash, W, H, 616 - len(line1) * 6, 68, line1, 1, (255, 255, 255, 255))
 draw_text(splash, W, H, 616 - len(line2) * 6, 86, line2, 1, (186, 230, 253, 255))
 
-# Cartao central translucido para o menu (x: 86..554, y: 188..376)
 for y in range(188, 377):
     for x in range(86, 555):
         is_border = (x <= 87 or x >= 553 or y <= 189 or y >= 375 or y == 232)
@@ -222,11 +216,11 @@ logo = bytearray([0, 0, 0, 0] * (160 * 160))
 draw_emblem(logo, 160, 160, 80, 80, 52)
 save_png_rgba(os.path.join(ply_dir, "logo.png"), 160, 160, logo)
 
-bar_bg = bytearray([15, 23, 42, 235] * (360 * 8))
-save_png_rgba(os.path.join(ply_dir, "progress_box.png"), 360, 8, bar_bg)
+bar_bg = bytearray([20, 34, 64, 245] * (360 * 10))
+save_png_rgba(os.path.join(ply_dir, "progress_box.png"), 360, 10, bar_bg)
 
-bar_fg = bytearray([0] * (360 * 8 * 4))
-for y in range(8):
+bar_fg = bytearray([0] * (360 * 10 * 4))
+for y in range(10):
     for x in range(360):
         t = x / 359.0
         i = (y * 360 + x) * 4
@@ -234,10 +228,10 @@ for y in range(8):
         bar_fg[i + 1] = int(127 + (189 - 127) * t)
         bar_fg[i + 2] = int(236 + (248 - 236) * t)
         bar_fg[i + 3] = 255
-save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 360, 8, bar_fg)
+save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 360, 10, bar_fg)
 PY
 
-# 4. Garante o descritor e o script completo do Plymouth (com logo + barra animada)
+# 4. Script do Plymouth com barra de progresso fluida e continua (sem Math.Int)
 mkdir -p /usr/share/plymouth/themes/eonluxos
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
@@ -257,35 +251,30 @@ Window.SetBackgroundBottomColor(0.0235, 0.0470, 0.1098);
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
-# Logo orbital centralizado
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetX(screen_w / 2 - logo.image.GetWidth() / 2);
 logo.sprite.SetY(screen_h / 2 - 145);
 logo.sprite.SetZ(10);
 
-# Titulo principal
 title.image = Image.Text("EonluxOS 1.0 Core", 1.0, 1.0, 1.0, 1.0, "Noto Sans Bold 16");
 title.sprite = Sprite(title.image);
 title.sprite.SetX(screen_w / 2 - title.image.GetWidth() / 2);
 title.sprite.SetY(screen_h / 2 + 25);
 title.sprite.SetZ(10);
 
-# Frase principal
 sub1.image = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1.0, "Noto Sans 11");
 sub1.sprite = Sprite(sub1.image);
 sub1.sprite.SetX(screen_w / 2 - sub1.image.GetWidth() / 2);
 sub1.sprite.SetY(screen_h / 2 + 62);
 sub1.sprite.SetZ(10);
 
-# Subtitulo secundario
 sub2.image = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1.0, "Noto Sans 9");
 sub2.sprite = Sprite(sub2.image);
 sub2.sprite.SetX(screen_w / 2 - sub2.image.GetWidth() / 2);
 sub2.sprite.SetY(screen_h / 2 + 86);
 sub2.sprite.SetZ(10);
 
-# Barra de progresso (fundo + preenchimento animado)
 pbox.image = Image("progress_box.png");
 pbox.sprite = Sprite(pbox.image);
 pbox.x = screen_w / 2 - pbox.image.GetWidth() / 2;
@@ -300,12 +289,12 @@ pbar.sprite.SetX(pbox.x);
 pbar.sprite.SetY(pbox.y);
 pbar.sprite.SetZ(11);
 
-current_progress = 0.08;
+current_progress = 0.06;
 fun update_bar(val) {
-    if (val < 0.08) val = 0.08;
+    if (val < 0.06) val = 0.06;
     if (val > 1.0) val = 1.0;
-    w = Math.Int(pbar.original.GetWidth() * val);
-    if (w < 4) w = 4;
+    w = pbar.original.GetWidth() * val;
+    if (w < 8) w = 8;
     pbar.scaled = pbar.original.Scale(w, pbar.original.GetHeight());
     pbar.sprite.SetImage(pbar.scaled);
 }
@@ -320,8 +309,8 @@ fun progress_callback(duration, progress) {
 Plymouth.SetBootProgressFunction(progress_callback);
 
 fun refresh_callback() {
-    if (current_progress < 0.96) {
-        current_progress = current_progress + 0.0015;
+    if (current_progress < 0.98) {
+        current_progress = current_progress + 0.0018;
         update_bar(current_progress);
     }
 }
@@ -335,7 +324,7 @@ fi
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 5. Garante getty@tty1 ativo (para autologin) e sem texto de banner na transicao
+# 5. Garante getty@tty1 ativo (para autologin) e totalmente silencioso
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
