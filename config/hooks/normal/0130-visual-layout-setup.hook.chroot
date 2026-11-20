@@ -231,7 +231,7 @@ for y in range(10):
 save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 360, 10, bar_fg)
 PY
 
-# 4. Script do Plymouth com chavetas obrigatorias em todos os blocos if
+# 4. Script do Plymouth com chavetas obrigatorias e barra progressiva ate 100%
 mkdir -p /usr/share/plymouth/themes/eonluxos
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
@@ -315,12 +315,17 @@ fun progress_callback(duration, progress) {
 Plymouth.SetBootProgressFunction(progress_callback);
 
 fun refresh_callback() {
-    if (current_progress < 0.98) {
-        current_progress = current_progress + 0.002;
+    if (current_progress < 0.96) {
+        current_progress = current_progress + 0.006;
         update_bar(current_progress);
     }
 }
 Plymouth.SetRefreshFunction(refresh_callback);
+
+fun quit_callback() {
+    update_bar(1.0);
+}
+Plymouth.SetQuitFunction(quit_callback);
 EOF
 
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
@@ -330,7 +335,7 @@ fi
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 5. Garante getty@tty1 ativo (para autologin) e oculta mensagens de login
+# 5. Garante getty@tty1 silencioso e mascara plymouth-quit para reter o splash ate o XFCE abrir
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -340,7 +345,8 @@ TTYVTDisallocate=no
 StandardOutput=null
 StandardError=null
 EOF
-rm -f /etc/systemd/system/plymouth-quit.service /etc/systemd/system/plymouth-quit-wait.service
+ln -sf /dev/null /etc/systemd/system/plymouth-quit.service
+ln -sf /dev/null /etc/systemd/system/plymouth-quit-wait.service
 
 # 6. Permite que o utilizador live inicie o Xorg diretamente
 mkdir -p /etc/X11
