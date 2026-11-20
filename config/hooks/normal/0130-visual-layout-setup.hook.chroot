@@ -52,6 +52,9 @@ FONT_5X7 = {
     "x": ["00000","00000","10001","01010","00100","01010","10001"],
 }
 
+def clamp_byte(v):
+    return 0 if v < 0 else (255 if v > 255 else int(v))
+
 def save_png(path, w, h, buf_rgba):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     raw = bytearray()
@@ -71,17 +74,20 @@ def blend_px(buf, w, h, x, y, r, g, b, a):
         return
     idx = (y * w + x) * 4
     if a >= 255:
-        buf[idx], buf[idx + 1], buf[idx + 2], buf[idx + 3] = r, g, b, 255
+        buf[idx] = clamp_byte(r)
+        buf[idx + 1] = clamp_byte(g)
+        buf[idx + 2] = clamp_byte(b)
+        buf[idx + 3] = 255
         return
     inv = 255 - a
     oa = buf[idx + 3]
     out_a = a + (oa * inv) // 255
-    if out_a == 0:
+    if out_a <= 0:
         return
-    buf[idx] = (r * a + buf[idx] * oa * inv // 255) // out_a
-    buf[idx + 1] = (g * a + buf[idx + 1] * oa * inv // 255) // out_a
-    buf[idx + 2] = (b * a + buf[idx + 2] * oa * inv // 255) // out_a
-    buf[idx + 3] = out_a
+    buf[idx] = clamp_byte((r * a + buf[idx] * oa * inv // 255) // out_a)
+    buf[idx + 1] = clamp_byte((g * a + buf[idx + 1] * oa * inv // 255) // out_a)
+    buf[idx + 2] = clamp_byte((b * a + buf[idx + 2] * oa * inv // 255) // out_a)
+    buf[idx + 3] = clamp_byte(out_a)
 
 def draw_circle(buf, w, h, cx, cy, rad, col, fill=False, width=2):
     r2_out = (rad + width * 0.5) ** 2
