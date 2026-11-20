@@ -23,8 +23,14 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
-# 1. ISOLINUX (BIOS) - Forca resolucao 640x480 para casar 1:1 com eonlux-splash.png
+# 1. ISOLINUX (BIOS) - Garante vesamenu.c32 e resolucao 640x480
 if [ -d binary/isolinux ]; then
+    for mod in vesamenu.c32 libcom32.c32 libutil.c32; do
+        if [ ! -f "binary/isolinux/$mod" ] && [ -f "/usr/lib/syslinux/modules/bios/$mod" ]; then
+            cp -f "/usr/lib/syslinux/modules/bios/$mod" "binary/isolinux/$mod"
+        fi
+    done
+
     cat <<'EOF' > binary/isolinux/stdmenu.cfg
 MENU RESOLUTION 640 480
 MENU BACKGROUND eonlux-splash.png
@@ -56,17 +62,22 @@ MENU COLOR timeout      1;36;40 #ff38bdf8 #00000000 none
 MENU COLOR help         37;40   #ff94a3b8 #00000000 none
 EOF
 
-    for cfg in binary/isolinux/menu.cfg binary/isolinux/isolinux.cfg; do
+    for cfg in binary/isolinux/*.cfg; do
         if [ -f "$cfg" ]; then
+            sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
             sed -i 's|^menu background .*|menu background eonlux-splash.png|I' "$cfg" || true
-            if ! grep -qi 'menu resolution' "$cfg"; then
-                sed -i '1i MENU RESOLUTION 640 480' "$cfg" || true
-            fi
+            sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
+        fi
+    done
+
+    for cfg in binary/isolinux/menu.cfg binary/isolinux/isolinux.cfg; do
+        if [ -f "$cfg" ] && ! grep -qi 'menu resolution' "$cfg"; then
+            sed -i '1i MENU RESOLUTION 640 480' "$cfg" || true
         fi
     done
 fi
 
-# 2. GRUB (UEFI) - Exibe a mesma imagem de fundo no modo UEFI
+# 2. GRUB (UEFI)
 if [ -d binary/boot/grub ] && [ -f binary/boot/grub/grub.cfg ]; then
     sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
     if grep -q 'terminal_output gfxterm' binary/boot/grub/grub.cfg; then
