@@ -23,8 +23,10 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
+# 1. ISOLINUX (BIOS) - Forca resolucao 640x480 para casar 1:1 com eonlux-splash.png
 if [ -d binary/isolinux ]; then
     cat <<'EOF' > binary/isolinux/stdmenu.cfg
+MENU RESOLUTION 640 480
 MENU BACKGROUND eonlux-splash.png
 MENU TITLE EonluxOS 1.0 Core
 MENU VSHIFT 12
@@ -57,6 +59,17 @@ EOF
     for cfg in binary/isolinux/menu.cfg binary/isolinux/isolinux.cfg; do
         if [ -f "$cfg" ]; then
             sed -i 's|^menu background .*|menu background eonlux-splash.png|I' "$cfg" || true
+            if ! grep -qi 'menu resolution' "$cfg"; then
+                sed -i '1i MENU RESOLUTION 640 480' "$cfg" || true
+            fi
         fi
     done
+fi
+
+# 2. GRUB (UEFI) - Exibe a mesma imagem de fundo no modo UEFI
+if [ -d binary/boot/grub ] && [ -f binary/boot/grub/grub.cfg ]; then
+    sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
+    if grep -q 'terminal_output gfxterm' binary/boot/grub/grub.cfg; then
+        sed -i '/terminal_output gfxterm/a insmod png\nbackground_image /boot/grub/eonlux-splash.png' binary/boot/grub/grub.cfg || true
+    fi
 fi
