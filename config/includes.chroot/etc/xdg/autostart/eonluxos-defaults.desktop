@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=EonluxOS Session Defaults
+Comment=Aplica identidade visual, dock inferior, wallpaper e ajuste 1024x600
+Exec=/usr/local/bin/eonluxos-apply-defaults.sh
+OnlyShowIn=XFCE;
+RunHook=0
+StartupNotify=false
+Terminal=false
+Hidden=false
