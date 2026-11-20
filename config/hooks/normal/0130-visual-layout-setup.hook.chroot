@@ -16,7 +16,7 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
     sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-# 2. Gerar ativos PNG do Plymouth e splash 640x480 RGB 24-bit do Bootloader (sem PIL)
+# 2. Gerar ativos PNG do Plymouth (plymouth-bg.png, emblem.png, barras) e eonlux-splash.png (640x480 RGB 24-bit)
 python3 - <<'PY'
 import math, os, struct, zlib
 
@@ -127,32 +127,142 @@ def resize_rgba(src_w, src_h, src_buf, dst_w, dst_h):
 def lerp(a, b, t):
     return int(a + (b - a) * t)
 
+def render_cosmic_backdrop(w, h, center_glow_y_ratio=0.40):
+    buf = bytearray(w * h * 4)
+    cx, cy = w * 0.50, h * center_glow_y_ratio
+    lx, ly = w * 0.14, h * 0.22
+    max_center = math.hypot(w * 0.52, h * 0.52)
+    max_left = math.hypot(w * 0.24, h * 0.24)
+
+    for y in range(h):
+        row = y * w * 4
+        dy_c = (y - cy) * 1.15
+        dy_l = y - ly
+        for x in range(w):
+            dc = math.hypot(x - cx, dy_c) / max_center
+            gc = max(0.0, 1.0 - dc) ** 2.1
+
+            dl = math.hypot(x - lx, dy_l) / max_left
+            gl = max(0.0, 1.0 - dl) ** 2.4
+
+            r = min(255, int(4 + 12 * gc + 10 * gl))
+            g = min(255, int(9 + 46 * gc + 44 * gl))
+            b = min(255, int(24 + 98 * gc + 74 * gl))
+            idx = row + x * 4
+            buf[idx:idx+4] = bytes((r, g, b, 255))
+
+    def add_px(px, py, sr, sg, sb, sa):
+        ix, iy = int(px), int(py)
+        if 0 <= ix < w and 0 <= iy < h and sa > 0:
+            idx = (iy * w + ix) * 4
+            buf[idx]     = min(255, buf[idx]     + (sr * sa) // 255)
+            buf[idx + 1] = min(255, buf[idx + 1] + (sg * sa) // 255)
+            buf[idx + 2] = min(255, buf[idx + 2] + (sb * sa) // 255)
+
+    def draw_line(x0, y0, x1, y1, col, alpha):
+        dx, dy = x1 - x0, y1 - y0
+        steps = max(1, int(max(abs(dx), abs(dy))))
+        for s in range(steps + 1):
+            t = s / steps
+            add_px(x0 + dx * t, y0 + dy * t, col[0], col[1], col[2], alpha)
+
+    def draw_node(nx, ny, radius, col, alpha):
+        r_int = int(radius) + 1
+        for oy in range(-r_int, r_int + 1):
+            for ox in range(-r_int, r_int + 1):
+                d = math.hypot(ox, oy)
+                if d <= radius:
+                    fall = int(alpha * (1.0 - d / (radius + 0.5)))
+                    add_px(nx + ox, ny + oy, col[0], col[1], col[2], fall)
+
+    # 1. Onda superior direita (7 linhas convergentes pontilhadas)
+    for k in range(7):
+        frac = k / 6.0
+        alpha_line = int(85 + 75 * (1.0 - frac))
+        prev = None
+        steps = 260
+        for s in range(steps + 1):
+            t = s / steps
+            px = w * (0.48 + 0.54 * t)
+            base_y = h * (0.38 - 0.34 * (t ** 1.15))
+            spread = h * (0.11 * (1.0 - t * 0.72)) * (frac - 0.35)
+            wave = math.sin(t * 4.4 + frac * 1.1) * (h * 0.022)
+            py = base_y + spread + wave
+            if prev is not None:
+                draw_line(prev[0], prev[1], px, py, (42, 168, 248), alpha_line)
+            if s % 16 == 0:
+                draw_node(px, py, 1.8, (140, 225, 255), min(255, alpha_line + 85))
+            prev = (px, py)
+
+    # 2. Onda inferior esquerda (8 linhas paralelas pontilhadas)
+    for k in range(8):
+        frac = k / 7.0
+        alpha_line = int(75 + 75 * (1.0 - frac))
+        prev = None
+        steps = 280
+        for s in range(steps + 1):
+            t = s / steps
+            px = w * (-0.02 + 0.68 * t)
+            base_y = h * (0.97 - 0.28 * (t ** 1.08))
+            spread = h * (0.095 * (1.0 - t * 0.45)) * (frac - 0.45)
+            wave = math.cos(t * 4.2 - frac * 0.9) * (h * 0.018)
+            py = base_y + spread + wave
+            if prev is not None:
+                draw_line(prev[0], prev[1], px, py, (36, 152, 240), alpha_line)
+            if s % 18 == 0:
+                draw_node(px, py, 1.7, (130, 218, 255), min(255, alpha_line + 80))
+            prev = (px, py)
+
+    # 3. Constelacao poligonal no canto inferior direito
+    nodes = [
+        (w * 0.71, h * 0.89),
+        (w * 0.74, h * 0.74),
+        (w * 0.80, h * 0.73),
+        (w * 0.85, h * 0.82),
+        (w * 0.84, h * 0.94),
+        (w * 0.92, h * 0.72),
+        (w * 0.98, h * 0.83),
+        (w * 0.95, h * 0.93),
+    ]
+    edges = [
+        (0, 1), (0, 3), (0, 4),
+        (1, 2), (1, 3),
+        (2, 3), (2, 5),
+        (3, 4), (3, 5), (3, 6), (3, 7),
+        (4, 7),
+        (5, 6),
+        (6, 7),
+    ]
+    for i, j in edges:
+        draw_line(nodes[i][0], nodes[i][1], nodes[j][0], nodes[j][1], (48, 165, 245), 95)
+    for nx, ny in nodes:
+        draw_node(nx, ny, 3.8, (40, 155, 245), 90)
+        draw_node(nx, ny, 2.0, (215, 245, 255), 240)
+
+    return buf
+
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
 assets_dir = "/usr/share/eonluxos"
 os.makedirs(theme_dir, exist_ok=True)
 os.makedirs(assets_dir, exist_ok=True)
 
 # 2a. Trilho e preenchimento da barra de progresso do Plymouth
-tw, th = 340, 8
+tw, th = 340, 6
 track = bytearray(tw * th * 4)
 for y in range(th):
     for x in range(tw):
         idx = (y * tw + x) * 4
-        if y == 0 or y == th - 1 or x == 0 or x == tw - 1:
-            track[idx:idx+4] = bytes((27, 53, 102, 255))
-        else:
-            track[idx:idx+4] = bytes((15, 29, 58, 255))
+        track[idx:idx+4] = bytes((22, 38, 72, 255))
 write_png_rgba(os.path.join(theme_dir, "progress-track.png"), tw, th, track)
 
-fw, fh = 340, 8
+fw, fh = 340, 6
 fill = bytearray(fw * fh * 4)
 for y in range(fh):
-    v_boost = 12 if y in (1, 2) else 0
     for x in range(fw):
         t = x / max(1, fw - 1)
-        r = min(255, lerp(14, 56, t) + v_boost)
-        g = min(255, lerp(98, 189, t) + v_boost)
-        b = min(255, lerp(199, 248, t) + v_boost)
+        r = lerp(19, 56, t)
+        g = lerp(127, 189, t)
+        b = lerp(236, 248, t)
         idx = (y * fw + x) * 4
         fill[idx:idx+4] = bytes((r, g, b, 255))
 write_png_rgba(os.path.join(theme_dir, "progress-fill.png"), fw, fh, fill)
@@ -176,28 +286,13 @@ if not os.path.exists(emblem_path):
                 buf[idx:idx+4] = b"\x38\xbd\xf8\xcc"
     write_png_rgba(emblem_path, w, h, buf)
 
-# 2c. Arte eonlux-splash.png (640x480 RGB 24-bit sem canal alfa para ISOLINUX e GRUB)
-W, H = 640, 480
-canvas = bytearray(W * H * 4)
-logo_cx, logo_cy = W / 2.0, 76.0
+# 2c. Fundo completo do Plymouth (1024x600 com ondas + constelacao)
+ply_bg = render_cosmic_backdrop(1024, 600, center_glow_y_ratio=0.40)
+write_png_rgba(os.path.join(theme_dir, "plymouth-bg.png"), 1024, 600, ply_bg)
 
-for y in range(H):
-    ty = y / (H - 1)
-    if ty < 0.5:
-        u = ty * 2.0
-        br, bg, bb = lerp(4, 6, u), lerp(8, 12, u), lerp(20, 28, u)
-    else:
-        u = (ty - 0.5) * 2.0
-        br, bg, bb = lerp(6, 10, u), lerp(12, 20, u), lerp(28, 43, u)
-    row = y * W * 4
-    for x in range(W):
-        dist = math.hypot((x - logo_cx) * 0.85, y - logo_cy)
-        glow = max(0.0, 1.0 - dist / 190.0) ** 2.3
-        r = min(255, int(br + 20 * glow))
-        g = min(255, int(bg + 68 * glow))
-        b = min(255, int(bb + 124 * glow))
-        idx = row + x * 4
-        canvas[idx:idx+4] = bytes((r, g, b, 255))
+# 2d. Arte eonlux-splash.png (640x480 RGB 24-bit sem alfa para ISOLINUX e GRUB)
+W, H = 640, 480
+canvas = render_cosmic_backdrop(W, H, center_glow_y_ratio=0.18)
 
 def blend_rect(x0, y0, rw, rh, rgba):
     sr, sg, sb, sa = rgba
@@ -221,7 +316,7 @@ for x in range(W):
 
 # Cartao central escuro (#0D1A36) com borda #137FEC para abrigar o menu do bootloader
 cx0, cy0, cw, ch = 64, 146, W - 128, 258
-blend_rect(cx0 + 2, cy0 + 2, cw - 4, ch - 4, (13, 26, 54, 225))
+blend_rect(cx0 + 2, cy0 + 2, cw - 4, ch - 4, (10, 22, 46, 220))
 blend_rect(cx0 + 4, cy0, cw - 8, 1, (38, 118, 224, 255))
 blend_rect(cx0 + 4, cy0 + ch - 1, cw - 8, 1, (27, 68, 138, 255))
 blend_rect(cx0, cy0 + 4, 1, ch - 8, (27, 68, 138, 255))
