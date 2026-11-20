@@ -3,8 +3,8 @@ set -eu
 
 SPLASH_SRC=""
 for candidate in \
-    chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png \
     chroot/usr/share/eonluxos/eonlux-splash.png \
+    chroot/usr/share/plymouth/themes/eonluxos/eonlux-splash.png \
     config/includes.chroot/usr/share/eonluxos/eonlux-splash.png
 do
     if [ -f "$candidate" ]; then
@@ -24,7 +24,7 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
-# 1. ISOLINUX (BIOS) - Fundo 640x480 RGB 24-bit + menu centralizado no cartao
+# 1. ISOLINUX (BIOS Legacy) - vesamenu.c32 640x480 com menu centralizado no cartao
 if [ -d binary/isolinux ]; then
     for mod in vesamenu.c32 libcom32.c32 libutil.c32 ldlinux.c32; do
         if [ ! -f "binary/isolinux/$mod" ]; then
@@ -46,23 +46,23 @@ if [ -d binary/isolinux ]; then
 MENU RESOLUTION 640 480
 MENU BACKGROUND eonlux-splash.png
 MENU TITLE EonluxOS 1.0 Core
-MENU VSHIFT 11
+MENU VSHIFT 10
 MENU HSHIFT 11
 MENU WIDTH 58
 MENU MARGIN 2
 MENU ROWS 6
-MENU TABMSGROW 25
-MENU CMDLINEROW 25
-MENU HELPMSGROW 26
-MENU TIMEOUTROW 27
+MENU TABMSGROW 26
+MENU CMDLINEROW 26
+MENU HELPMSGROW 27
+MENU TIMEOUTROW 28
 
 MENU COLOR screen       37;40   #00000000 #00000000 none
 MENU COLOR border       30;44   #00000000 #00000000 none
 MENU COLOR title        1;36;44 #ff38bdf8 #00000000 none
 MENU COLOR unsel        37;44   #ffe2e8f0 #00000000 none
-MENU COLOR sel          7;37;40 #ffffffff #ff137fec none
+MENU COLOR sel          7;37;40 #ffffffff #ff137fec all
 MENU COLOR hotkey       1;36;44 #ff38bdf8 #00000000 none
-MENU COLOR hotsel       1;7;37;40 #ffffffff #ff137fec none
+MENU COLOR hotsel       1;7;37;40 #ffffffff #ff137fec all
 MENU COLOR disabled     1;30;44 #ff64748b #00000000 none
 MENU COLOR scrollbar    30;44   #00000000 #00000000 none
 MENU COLOR tabmsg       31;40   #ff94a3b8 #00000000 none
@@ -71,6 +71,7 @@ MENU COLOR cmdline      37;40   #ffe2e8f0 #00000000 none
 MENU COLOR timeout_msg  37;40   #ff94a3b8 #00000000 none
 MENU COLOR timeout      1;36;40 #ff38bdf8 #00000000 none
 MENU COLOR help         37;40   #ff94a3b8 #00000000 none
+MENU TABMSG Pressione [Tab] para editar opcoes de arranque
 EOF
 
     for cfg in binary/isolinux/*.cfg; do
@@ -78,22 +79,57 @@ EOF
             sed -i 's/\bmenu\.c32\b/vesamenu.c32/g' "$cfg" || true
             sed -i 's|^menu background .*|menu background eonlux-splash.png|I' "$cfg" || true
             sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' "$cfg" || true
-            sed -i 's/^timeout .*/timeout 30/I' "$cfg" || true
+            sed -i 's/Live system (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' "$cfg" || true
+            sed -i 's/Live system (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' "$cfg" || true
+            sed -i 's/Live (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' "$cfg" || true
+            sed -i 's/Live (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' "$cfg" || true
+            sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' "$cfg" || true
+            sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' "$cfg" || true
+            sed -i 's/Install GUI/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' "$cfg" || true
+            sed -i 's/menu label \^Install$/menu label Instalar EonluxOS 1.0 Core (Modo Texto)/g' "$cfg" || true
+            sed -i 's/Utilities/Utilidades do Sistema/g' "$cfg" || true
         fi
     done
 
     for cfg in binary/isolinux/menu.cfg binary/isolinux/isolinux.cfg; do
-        if [ -f "$cfg" ] && ! grep -qi 'include stdmenu.cfg' "$cfg"; then
-            printf '\ninclude stdmenu.cfg\n' >> "$cfg"
+        if [ -f "$cfg" ]; then
+            sed -i 's/^timeout .*/timeout 50/I' "$cfg" || true
+            if ! grep -qi 'include stdmenu.cfg' "$cfg"; then
+                printf '\ninclude stdmenu.cfg\n' >> "$cfg"
+            fi
         fi
     done
 fi
 
-# 2. GRUB (UEFI)
+# 2. GRUB (UEFI) - Fundo 640x480 RGB 24-bit e paleta #060C1C / #137FEC
 if [ -d binary/boot/grub ] && [ -f binary/boot/grub/grub.cfg ]; then
+    sed -i 's/Debian GNU\/Linux Live (kernel [^)]*)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
     sed -i 's/Debian GNU\/Linux/EonluxOS 1.0 Core/g' binary/boot/grub/grub.cfg || true
-    sed -i 's/^set timeout=.*/set timeout=3/' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system (amd64 failsafe)/EonluxOS 1.0 Core (Modo de Seguranca)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system (amd64)/Iniciar EonluxOS 1.0 Core (Modo Live)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Graphical Debian Installer/Instalar EonluxOS 1.0 Core (Instalador Grafico)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Debian Installer/Instalar EonluxOS 1.0 Core (Modo Texto)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
+    sed -i 's/^set timeout=.*/set timeout=5/' binary/boot/grub/grub.cfg || true
+
     if grep -q 'terminal_output gfxterm' binary/boot/grub/grub.cfg; then
-        sed -i '/terminal_output gfxterm/a insmod png\nbackground_image /boot/grub/eonlux-splash.png' binary/boot/grub/grub.cfg || true
+        sed -i '/terminal_output gfxterm/a insmod png\nset color_normal=light-gray/black\nset color_highlight=white/blue\nset menu_color_normal=light-gray/black\nset menu_color_highlight=white/blue\nbackground_image /boot/grub/eonlux-splash.png' binary/boot/grub/grub.cfg || true
+    else
+        cat <<'EOF' > /tmp/grub-eonlux-header.cfg
+insmod all_video
+insmod gfxterm
+insmod png
+terminal_output gfxterm
+set color_normal=light-gray/black
+set color_highlight=white/blue
+set menu_color_normal=light-gray/black
+set menu_color_highlight=white/blue
+if [ -f /boot/grub/eonlux-splash.png ]; then
+    background_image /boot/grub/eonlux-splash.png
+fi
+EOF
+        cat /tmp/grub-eonlux-header.cfg binary/boot/grub/grub.cfg > /tmp/grub-merged.cfg
+        mv /tmp/grub-merged.cfg binary/boot/grub/grub.cfg
+        rm -f /tmp/grub-eonlux-header.cfg
     fi
 fi
