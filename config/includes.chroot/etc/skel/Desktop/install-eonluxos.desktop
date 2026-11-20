@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Instalar Eonlux Core
+Comment=Instalar o EonluxOS 1.0 Core permanentemente no disco
+Exec=/usr/local/bin/eonluxos-installer.sh
+Icon=eonluxos-logo
+Terminal=false
+Categories=System;
+StartupNotify=true
