@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=EonluxOS 1.0 Core
+Description=Boot grafico minimalista EonluxOS 1.0 Core
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/eonluxos
+ScriptFile=/usr/share/plymouth/themes/eonluxos/eonluxos.script
