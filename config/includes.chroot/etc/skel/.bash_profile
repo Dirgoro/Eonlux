@@ -9,9 +9,10 @@ if [ -z "${DISPLAY:-}" ]; then
     case "$CURRENT_TTY" in
         /dev/tty1|/dev/tty2)
             if ! systemctl is-active --quiet lightdm.service 2>/dev/null; then
-                # Libera teclado e DRM do Plymouth mantendo a imagem congelada ate o XFCE abrir
+                # Limpa o ecra com a cor de fundo antes de libertar o Plymouth
+                printf '\033[2J\033[H\033[?25l'
                 if command -v plymouth >/dev/null 2>&1; then
-                    plymouth quit --retain-splash 2>/dev/null || true
+                    plymouth quit 2>/dev/null || true
                 fi
 
                 VT_NUM="${CURRENT_TTY#/dev/tty}"
