@@ -22,12 +22,10 @@ if [ -d binary/isolinux ]; then
         cp -f "$SPLASH_SRC" binary/isolinux/eonlux-splash.png
     fi
 
-    # Garante modulos graficos do Syslinux caso o live-build tenha usado menu.c32
-    for mod in vesamenu.c32 libcom32.c32 libutil.c32; do
-        if [ ! -f "binary/isolinux/$mod" ] && [ -f "chroot/usr/lib/syslinux/modules/bios/$mod" ]; then
-            cp -f "chroot/usr/lib/syslinux/modules/bios/$mod" "binary/isolinux/$mod"
-        fi
-    done
+    # Copia apenas do host caso vesamenu.c32 nao esteja presente (nunca do chroot)
+    if [ ! -f binary/isolinux/vesamenu.c32 ] && [ -f /usr/lib/syslinux/modules/bios/vesamenu.c32 ]; then
+        cp -f /usr/lib/syslinux/modules/bios/vesamenu.c32 binary/isolinux/vesamenu.c32
+    fi
 
     for cfg in binary/isolinux/*.cfg; do
         if [ -f "$cfg" ]; then
@@ -39,7 +37,7 @@ if [ -d binary/isolinux ]; then
     cat <<'EOF' > binary/isolinux/stdmenu.cfg
 menu background splash.png
 menu title EonluxOS 1.0 Core
-menu color screen	37;40      #00000000 #00000000 none
+menu color screen	37;40      #80e2e8f0 #ff060c1c std
 menu color border	30;44      #00000000 #00000000 none
 menu color title	1;36;44    #ff38bdf8 #00000000 none
 menu color sel		7;37;40    #ffffffff #ff137fec all
@@ -90,20 +88,26 @@ if [ -d binary/boot/grub ]; then
         sed -i 's/Live system with speech synthesis/EonluxOS 1.0 Core (Acessibilidade por Voz)/g' binary/boot/grub/grub.cfg || true
         sed -i 's/^set timeout=.*/set timeout=5/' binary/boot/grub/grub.cfg || true
 
-        cat <<'EOF' > /tmp/grub-eonlux-header.cfg
-set gfxmode=1024x600,auto
-set gfxpayload=keep
+        # Aplica fundo e cores logo apos terminal_output gfxterm (ou no topo se nao existir)
+        if grep -q 'terminal_output gfxterm' binary/boot/grub/grub.cfg; then
+            sed -i '/terminal_output gfxterm/a insmod png\nset color_normal=light-gray/black\nset color_highlight=white/blue\nset menu_color_normal=light-gray/black\nset menu_color_highlight=white/blue\nbackground_image /boot/grub/splash.png' binary/boot/grub/grub.cfg
+        else
+            cat <<'EOF' > /tmp/grub-eonlux-header.cfg
+insmod all_video
+insmod gfxterm
+insmod png
+terminal_output gfxterm
 set color_normal=light-gray/black
 set color_highlight=white/blue
 set menu_color_normal=light-gray/black
 set menu_color_highlight=white/blue
 if [ -f /boot/grub/splash.png ]; then
-    insmod png
     background_image /boot/grub/splash.png
 fi
 EOF
-        cat /tmp/grub-eonlux-header.cfg binary/boot/grub/grub.cfg > /tmp/grub-merged.cfg
-        mv /tmp/grub-merged.cfg binary/boot/grub/grub.cfg
-        rm -f /tmp/grub-eonlux-header.cfg
+            cat /tmp/grub-eonlux-header.cfg binary/boot/grub/grub.cfg > /tmp/grub-merged.cfg
+            mv /tmp/grub-merged.cfg binary/boot/grub/grub.cfg
+            rm -f /tmp/grub-eonlux-header.cfg
+        fi
     fi
 fi
