@@ -14,7 +14,20 @@ touch /etc/skel/.hushlogin
 : > /etc/issue
 : > /etc/issue.net
 
-# 3. Forca tema escuro globalmente para GTK3 (evita Thunar branco no arranque)
+# 3. Redireciona chamadas interativas de xfce4-session-logout para a tela personalizada EonluxOS
+if [ -x /usr/bin/xfce4-session-logout ] && [ ! -e /usr/bin/xfce4-session-logout.real ]; then
+    dpkg-divert --add --rename --divert /usr/bin/xfce4-session-logout.real /usr/bin/xfce4-session-logout
+    cat <<'EOF' > /usr/bin/xfce4-session-logout
+#!/bin/sh
+if [ "$#" -eq 0 ] && [ -x /usr/local/bin/eonluxos-power-menu ]; then
+    exec /usr/local/bin/eonluxos-power-menu
+fi
+exec /usr/bin/xfce4-session-logout.real "$@"
+EOF
+    chmod 0755 /usr/bin/xfce4-session-logout
+fi
+
+# 4. Forca tema escuro globalmente para GTK3 (evita janelas claras no arranque)
 mkdir -p /etc/gtk-3.0 /etc/skel/.config/gtk-3.0
 cat <<'EOF' > /etc/gtk-3.0/settings.ini
 [Settings]
@@ -25,7 +38,7 @@ gtk-application-prefer-dark-theme=1
 EOF
 cp -f /etc/gtk-3.0/settings.ini /etc/skel/.config/gtk-3.0/settings.ini
 
-# 4. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth e Bootloader
+# 5. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth e Bootloader
 SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 PLY_DIR="/usr/share/plymouth/themes/eonluxos"
 
@@ -68,10 +81,7 @@ PYSVG
     fi
 fi
 
-# 5. Gera os ativos graficos em Python 3 puro:
-#    - Bootloader minimalista (640x480 RGB 24-bit com logo oficial e nome do sistema)
-#    - Plymouth background.png (boot) e background-shutdown.png (desligamento/reinicio)
-#    - Barras de progresso e divisor minimalista do Plymouth
+# 6. Gera os ativos graficos em Python 3 puro (Bootloader + Plymouth Boot/Shutdown)
 python3 - <<'PY'
 import math
 import os
@@ -316,7 +326,6 @@ def paint_modern_tech_backdrop(buf, w, h):
         draw_circle(buf, w, h, nx, ny, 2, (224, 242, 254, 235), fill=True)
 
 def paint_shutdown_backdrop(buf, w, h):
-    # Fundo mais sereno e minimalista para encerramento (halo central suave + horizonte sutil)
     for gr in range(int(min(w, h) * 0.44), 10, -8):
         a = int(16 * (1 - gr / (min(w, h) * 0.44)))
         draw_circle(buf, w, h, int(w * 0.5), int(h * 0.36), gr, (14, 116, 210, a), fill=True)
@@ -383,7 +392,7 @@ PY
 
 rm -f /tmp/eonluxos-logo-64.png
 
-# 6. Script do Plymouth com telas e mensagens distintas para Boot, Desligamento e Reinicio
+# 7. Script do Plymouth com telas e mensagens distintas para Boot, Desligamento e Reinicio
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
 Name=EonluxOS
@@ -459,7 +468,6 @@ sub2.sprite.SetX(screen_w / 2 - sub2.image.GetWidth() / 2);
 sub2.sprite.SetY(screen_h / 2 + 76);
 sub2.sprite.SetZ(10);
 
-# Exibe a barra de progresso apenas durante o arranque (boot)
 if (!is_power_transition) {
     pbox.image = Image("progress_box.png");
     pbox.sprite = Sprite(pbox.image);
@@ -519,7 +527,7 @@ if command -v plymouth-set-default-theme >/dev/null 2>&1; then
     plymouth-set-default-theme -R eonluxos || plymouth-set-default-theme eonluxos || true
 fi
 
-# 7. Pre-carrega modulos KMS/DRM no initramfs para eliminar os 4s de ecra preto inicial
+# 8. Pre-carrega modulos KMS/DRM no initramfs para eliminar os 4s de ecra preto inicial
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
@@ -527,7 +535,7 @@ for mod in drm_kms_helper i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs vbo
     grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
 done
 
-# 8. Garante getty@tty1 silencioso e evita que o systemd limpe o splash antes do Xorg assumir
+# 9. Garante getty@tty1 silencioso e evita que o systemd limpe o splash antes do Xorg assumir
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -540,14 +548,14 @@ EOF
 ln -sf /dev/null /etc/systemd/system/plymouth-quit.service
 ln -sf /dev/null /etc/systemd/system/plymouth-quit-wait.service
 
-# 9. Permite que o utilizador live inicie o Xorg diretamente
+# 10. Permite que o utilizador live inicie o Xorg diretamente
 mkdir -p /etc/X11
 cat <<'EOF' > /etc/X11/Xwrapper.config
 allowed_users=anybody
 needs_root_rights=yes
 EOF
 
-# 10. Atualiza cache de icones GTK e reconstroi o initramfs
+# 11. Atualiza cache de icones GTK e reconstroi o initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
