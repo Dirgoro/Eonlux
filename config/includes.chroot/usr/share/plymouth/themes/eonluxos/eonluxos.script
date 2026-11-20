@@ -1,4 +1,4 @@
-// EonluxOS 1.0 Core - Tema Plymouth com Logo Oficial e Variacoes Tonais
+// EonluxOS 1.0 Core - Tema Plymouth com Logo Oficial, Halo e Animacao Fluida
 
 Window.SetBackgroundTopColor(0.016, 0.031, 0.078);     // #040814
 Window.SetBackgroundBottomColor(0.039, 0.078, 0.169);  // #0A142B
@@ -39,7 +39,13 @@ bar_h = 8;
 bar_x = center_x - (bar_w / 2);
 bar_y = center_y + 12;
 
+bar_track = Image("progress-track.png");
+bar_fill = Image("progress-fill.png");
+
 bg_bar_sprite = Sprite();
+if (bar_track) {
+    bg_bar_sprite.SetImage(bar_track.Scale(bar_w, bar_h));
+}
 bg_bar_sprite.SetX(bar_x);
 bg_bar_sprite.SetY(bar_y);
 bg_bar_sprite.SetZ(15);
@@ -64,6 +70,16 @@ sub_sprite.SetZ(10);
 
 progress_val = 0.08;
 
+fun render_bar() {
+    fill_w = Math.Int(bar_w * progress_val);
+    if (fill_w < 12) {
+        fill_w = 12;
+    }
+    if (bar_fill) {
+        fg_bar_sprite.SetImage(bar_fill.Scale(fill_w, bar_h));
+    }
+}
+
 fun boot_progress_callback(duration, progress) {
     if (progress > progress_val) {
         progress_val = progress;
@@ -71,18 +87,17 @@ fun boot_progress_callback(duration, progress) {
     if (progress_val > 1.0) {
         progress_val = 1.0;
     }
-    fill_w = Math.Int(bar_w * progress_val);
-    if (fill_w < 12) {
-        fill_w = 12;
-    }
-    bar_track = Image("progress-track.png");
-    if (bar_track) {
-        bg_bar_sprite.SetImage(bar_track.Scale(bar_w, bar_h));
-    }
-    bar_fill = Image("progress-fill.png");
-    if (bar_fill) {
-        fg_bar_sprite.SetImage(bar_fill.Scale(fill_w, bar_h));
+    render_bar();
+}
+
+// Avanco suave continuo durante o carregamento do SquashFS no modo Live
+fun refresh_callback() {
+    if (progress_val < 0.92) {
+        progress_val = progress_val + 0.0012;
+        render_bar();
     }
 }
 
+render_bar();
 Plymouth.SetBootProgressFunction(boot_progress_callback);
+Plymouth.SetRefreshFunction(refresh_callback);
