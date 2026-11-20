@@ -29,7 +29,7 @@ if [ -f "$SVG_LOGO" ]; then
         rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
         rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
         rsvg-convert -w 136 -h 136 "$SVG_LOGO" -o "${PLY_DIR}/logo.png"
-        rsvg-convert -w 68 -h 68 "$SVG_LOGO" -o /tmp/eonluxos-logo-68.png
+        rsvg-convert -w 64 -h 64 "$SVG_LOGO" -o /tmp/eonluxos-logo-64.png
     else
         python3 - <<'PYSVG' || true
 import gi
@@ -41,7 +41,7 @@ targets = [
     (24, "/usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png"),
     (48, "/usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png"),
     (136, "/usr/share/plymouth/themes/eonluxos/logo.png"),
-    (68, "/tmp/eonluxos-logo-68.png"),
+    (64, "/tmp/eonluxos-logo-64.png"),
 ]
 for size, out in targets:
     pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(svg, size, size, True)
@@ -54,9 +54,8 @@ PYSVG
 fi
 
 # 4. Gera os ativos graficos em Python 3 puro:
-#    - Bootloader (640x480 RGB 24-bit com a logo oficial composta)
-#    - Plymouth background.png (1280x800 limpo, sem retangulo central)
-#    - Barras de progresso do Plymouth (progress_box.png e progress_bar.png)
+#    - Bootloader minimalista (640x480 RGB 24-bit no mesmo padrao visual do Plymouth)
+#    - Plymouth background.png (1280x800 limpo) + barras de progresso
 python3 - <<'PY'
 import math
 import os
@@ -65,34 +64,20 @@ import zlib
 
 FONT_5X7 = {
     " ": ["00000","00000","00000","00000","00000","00000","00000"],
-    "!": ["00100","00100","00100","00100","00100","00000","00100"],
-    ",": ["00000","00000","00000","00000","00100","00100","01000"],
     ".": ["00000","00000","00000","00000","00000","01100","01100"],
     "0": ["01110","10001","10011","10101","11001","10001","01110"],
     "1": ["00100","01100","00100","00100","00100","00100","01110"],
     "C": ["01110","10001","10000","10000","10000","10001","01110"],
-    "D": ["11100","10010","10001","10001","10001","10010","11100"],
     "E": ["11111","10000","10000","11110","10000","10000","11111"],
     "L": ["10000","10000","10000","10000","10000","10000","11111"],
     "O": ["01110","10001","10001","10001","10001","10001","01110"],
     "S": ["01111","10000","10000","01110","00001","00001","11110"],
-    "a": ["00000","00000","01110","00001","01111","10001","01111"],
-    "c": ["00000","00000","01110","10000","10000","10001","01110"],
-    "d": ["00001","00001","01101","10011","10001","10001","01111"],
     "e": ["00000","00000","01110","10001","11111","10000","01110"],
-    "ê": ["00100","01010","01110","10001","11111","10000","01110"],
-    "i": ["00100","00000","01100","00100","00100","00100","01110"],
     "l": ["01100","00100","00100","00100","00100","00100","01110"],
-    "m": ["00000","00000","11010","10101","10101","10001","10001"],
     "n": ["00000","00000","10110","11001","10001","10001","10001"],
     "o": ["00000","00000","01110","10001","10001","10001","01110"],
-    "p": ["00000","00000","11110","10001","11110","10000","10000"],
     "r": ["00000","00000","10110","11001","10000","10000","10000"],
-    "á": ["00010","00100","01110","00001","01111","10001","01111"],
-    "s": ["00000","00000","01111","10000","01110","00001","11110"],
-    "t": ["01000","01000","11100","01000","01000","01001","00110"],
     "u": ["00000","00000","10001","10001","10001","10011","01101"],
-    "v": ["00000","00000","10001","10001","10001","01010","00100"],
     "x": ["00000","00000","10001","01010","00100","01010","10001"],
 }
 
@@ -273,7 +258,7 @@ def paint_modern_tech_backdrop(buf, w, h):
     # Brilho radial profundo
     for gr in range(int(min(w, h) * 0.55), 12, -8):
         a = int(14 * (1 - gr / (min(w, h) * 0.55)))
-        draw_circle(buf, w, h, int(w * 0.5), int(h * 0.38), gr, (19, 127, 236, a), fill=True)
+        draw_circle(buf, w, h, int(w * 0.5), int(h * 0.36), gr, (19, 127, 236, a), fill=True)
         draw_circle(buf, w, h, int(w * 0.14), int(h * 0.18), int(gr * 0.7), (56, 189, 248, max(1, a // 2)), fill=True)
         draw_circle(buf, w, h, int(w * 0.88), int(h * 0.85), int(gr * 0.8), (14, 165, 233, max(1, a // 2)), fill=True)
 
@@ -318,32 +303,26 @@ def paint_modern_tech_backdrop(buf, w, h):
         draw_circle(buf, w, h, nx, ny, 3, (56, 189, 248, 105), fill=True)
         draw_circle(buf, w, h, nx, ny, 2, (224, 242, 254, 235), fill=True)
 
-# A) Splash do Bootloader (640x480 - RGB 24-bit) com a Logo Oficial
+# A) Splash Minimalista do Bootloader (640x480 - RGB 24-bit)
+#    Mantem exatamente o mesmo padrao visual do loading: fundo limpo + logo + nome do sistema
 W, H = 640, 480
 splash = bytearray([6, 12, 28, 255] * (W * H))
 paint_modern_tech_backdrop(splash, W, H)
 
-logo68 = read_png_rgba("/tmp/eonluxos-logo-68.png")
-if logo68:
-    blit_rgba(splash, W, H, logo68, 42, 50)
+logo64 = read_png_rgba("/tmp/eonluxos-logo-64.png")
+if logo64:
+    blit_rgba(splash, W, H, logo64, (W - 64) // 2, 42)
 else:
-    draw_fallback_emblem(splash, W, H, 76, 84, 30)
+    draw_fallback_emblem(splash, W, H, W // 2, 74, 28)
 
-draw_text(splash, W, H, 122, 62, "EonluxOS", 3, (255, 255, 255, 255))
-draw_text(splash, W, H, 140, 92, "1.0 Core", 2, (56, 189, 248, 255))
+title_txt = "EonluxOS 1.0 Core"
+title_scale = 2
+title_w = len(title_txt) * 6 * title_scale
+draw_text(splash, W, H, (W - title_w) // 2, 118, title_txt, title_scale, (255, 255, 255, 255))
 
-line1 = "Dê uma nova vida ao seu computador."
-line2 = "Leve, rápido e livre de verdade!"
-draw_text(splash, W, H, 616 - len(line1) * 6, 68, line1, 1, (255, 255, 255, 255))
-draw_text(splash, W, H, 616 - len(line2) * 6, 86, line2, 1, (186, 230, 253, 255))
-
-for y in range(188, 377):
-    for x in range(86, 555):
-        is_border = (x <= 87 or x >= 553 or y <= 189 or y >= 375 or y == 232)
-        if is_border:
-            blend_px(splash, W, H, x, y, 56, 189, 248, 225)
-        else:
-            blend_px(splash, W, H, x, y, 8, 18, 42, 215)
+# Linha divisoria minimalista sutil acima da lista de opcoes
+for x in range(170, 470):
+    blend_px(splash, W, H, x, 148, 56, 189, 248, 120)
 
 save_png_rgb("/usr/share/eonluxos/eonlux-splash.png", W, H, splash)
 
@@ -357,7 +336,6 @@ paint_modern_tech_backdrop(ply_bg, PW, PH)
 
 save_png_rgba(os.path.join(ply_dir, "background.png"), PW, PH, ply_bg)
 
-# Fallback caso eonluxos-logo.svg nao exista
 logo_path = os.path.join(ply_dir, "logo.png")
 if not os.path.exists(logo_path):
     logo_fb = bytearray([0, 0, 0, 0] * (136 * 136))
@@ -379,9 +357,9 @@ for y in range(8):
 save_png_rgba(os.path.join(ply_dir, "progress_bar.png"), 380, 8, bar_fg)
 PY
 
-rm -f /tmp/eonluxos-logo-68.png
+rm -f /tmp/eonluxos-logo-64.png
 
-# 5. Script do Plymouth com fundo moderno redimensionavel (1024x600 ate Full HD) + Logo Oficial
+# 5. Script do Plymouth (preenche 100% da barra no encerramento para reter o quadro completo)
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
 Name=EonluxOS
@@ -400,7 +378,6 @@ Window.SetBackgroundBottomColor(0.0235, 0.0470, 0.1098);
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
-// Fundo moderno escalado proporcionalmente a resolucao real do monitor (EDID)
 bg.raw = Image("background.png");
 if (bg.raw) {
     bg.image = bg.raw.Scale(screen_w, screen_h);
@@ -410,7 +387,6 @@ if (bg.raw) {
     bg.sprite.SetZ(1);
 }
 
-// Logotipo oficial do EonluxOS centralizado
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetX(screen_w / 2 - logo.image.GetWidth() / 2);
@@ -476,7 +452,7 @@ Plymouth.SetBootProgressFunction(progress_callback);
 
 fun refresh_callback() {
     if (current_progress < 0.96) {
-        current_progress = current_progress + 0.006;
+        current_progress = current_progress + 0.008;
         update_bar(current_progress);
     }
 }
@@ -495,7 +471,7 @@ fi
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 6. Garante getty@tty1 silencioso e mascara plymouth-quit para reter o splash ate o XFCE abrir
+# 6. Garante getty@tty1 silencioso e evita que o systemd limpe o splash antes do Xorg assumir
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
