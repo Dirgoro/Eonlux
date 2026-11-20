@@ -16,5 +16,5 @@ lb config noauto \
   --iso-application "EonluxOS 1.0 Core" \
   --iso-publisher "EonluxOS Project" \
   --iso-volume "EONLUXOS_1_0" \
-  --bootappend-live "boot=live components quiet splash plymouth.enable=1 loglevel=3 vt.global_cursor_default=0 vt.default_red=6,239,34,234,19,168,56,6,100,248,74,250,56,192,103,56 vt.default_grn=12,68,197,179,127,85,189,12,116,113,222,204,189,132,232,189 vt.default_blu=28,68,94,8,236,247,248,28,139,113,128,21,248,252,249,248" \
+  --bootappend-live "boot=live components quiet splash plymouth.enable=1 loglevel=3 vt.global_cursor_default=0 systemd.show_status=false rd.systemd.show_status=false vt.default_red=6,239,34,234,19,168,56,6,100,248,74,250,56,192,103,56 vt.default_grn=12,68,197,179,127,85,189,12,116,113,222,204,189,132,232,189 vt.default_blu=28,68,94,8,236,247,248,28,139,113,128,21,248,252,249,248" \
   "${@}"
