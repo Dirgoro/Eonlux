@@ -9,17 +9,30 @@ done
 # 2. Garante permissao de execucao nos scripts e silencia banners no autologin
 chmod +x /usr/local/bin/eonluxos-* 2>/dev/null || true
 chmod +x /etc/skel/.xinitrc 2>/dev/null || true
+chmod +x /etc/skel/Desktop/*.desktop 2>/dev/null || true
 touch /etc/skel/.hushlogin
 : > /etc/issue
 : > /etc/issue.net
 
-# 3. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth e Bootloader
+# 3. Forca tema escuro globalmente para GTK3 (evita Thunar branco no arranque)
+mkdir -p /etc/gtk-3.0 /etc/skel/.config/gtk-3.0
+cat <<'EOF' > /etc/gtk-3.0/settings.ini
+[Settings]
+gtk-theme-name=Adwaita-dark
+gtk-icon-theme-name=Papirus-Dark
+gtk-font-name=Noto Sans 9
+gtk-application-prefer-dark-theme=1
+EOF
+cp -f /etc/gtk-3.0/settings.ini /etc/skel/.config/gtk-3.0/settings.ini
+
+# 4. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth e Bootloader
 SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 PLY_DIR="/usr/share/plymouth/themes/eonluxos"
 
 mkdir -p \
     /usr/share/icons/hicolor/24x24/apps \
     /usr/share/icons/hicolor/48x48/apps \
+    /usr/share/icons/hicolor/64x64/apps \
     /usr/share/pixmaps \
     "$PLY_DIR"
 
@@ -28,6 +41,7 @@ if [ -f "$SVG_LOGO" ]; then
     if command -v rsvg-convert >/dev/null 2>&1; then
         rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
         rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
+        rsvg-convert -w 64 -h 64 "$SVG_LOGO" -o /usr/share/icons/hicolor/64x64/apps/eonluxos-logo.png
         rsvg-convert -w 136 -h 136 "$SVG_LOGO" -o "${PLY_DIR}/logo.png"
         rsvg-convert -w 64 -h 64 "$SVG_LOGO" -o /tmp/eonluxos-logo-64.png
     else
@@ -40,6 +54,7 @@ svg = "/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
 targets = [
     (24, "/usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png"),
     (48, "/usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png"),
+    (64, "/usr/share/icons/hicolor/64x64/apps/eonluxos-logo.png"),
     (136, "/usr/share/plymouth/themes/eonluxos/logo.png"),
     (64, "/tmp/eonluxos-logo-64.png"),
 ]
@@ -53,9 +68,10 @@ PYSVG
     fi
 fi
 
-# 4. Gera os ativos graficos em Python 3 puro:
-#    - Bootloader minimalista (640x480 RGB 24-bit no mesmo padrao visual do Plymouth)
-#    - Plymouth background.png (1280x800 limpo) + barras de progresso
+# 5. Gera os ativos graficos em Python 3 puro:
+#    - Bootloader minimalista (640x480 RGB 24-bit com logo oficial e nome do sistema)
+#    - Plymouth background.png (1280x800 limpo, sem retangulo central)
+#    - Barras de progresso do Plymouth (progress_box.png e progress_bar.png)
 python3 - <<'PY'
 import math
 import os
@@ -255,14 +271,12 @@ def draw_fallback_emblem(buf, w, h, cx, cy, rad):
     draw_circle(buf, w, h, cx, cy, int(rad * 0.26), (224, 242, 254, 255), fill=True)
 
 def paint_modern_tech_backdrop(buf, w, h):
-    # Brilho radial profundo
     for gr in range(int(min(w, h) * 0.55), 12, -8):
         a = int(14 * (1 - gr / (min(w, h) * 0.55)))
         draw_circle(buf, w, h, int(w * 0.5), int(h * 0.36), gr, (19, 127, 236, a), fill=True)
         draw_circle(buf, w, h, int(w * 0.14), int(h * 0.18), int(gr * 0.7), (56, 189, 248, max(1, a // 2)), fill=True)
         draw_circle(buf, w, h, int(w * 0.88), int(h * 0.85), int(gr * 0.8), (14, 165, 233, max(1, a // 2)), fill=True)
 
-    # Ondas luminosas superiores direitas
     for wave in range(8):
         pts = []
         x_start = int(w * 0.52)
@@ -275,7 +289,6 @@ def paint_modern_tech_backdrop(buf, w, h):
         for px, py in pts[::2]:
             draw_circle(buf, w, h, int(px), int(py), 1, (186, 230, 253, 185), fill=True)
 
-    # Ondas luminosas inferiores esquerdas
     for wave in range(9):
         pts = []
         x_end = int(w * 0.66)
@@ -288,7 +301,6 @@ def paint_modern_tech_backdrop(buf, w, h):
         for px, py in pts[::2]:
             draw_circle(buf, w, h, int(px), int(py), 1, (125, 211, 252, 165), fill=True)
 
-    # Constelacao poligonal inferior direita
     rel_nodes = [
         (0.71, 0.92), (0.78, 0.83), (0.85, 0.88), (0.92, 0.77), (0.98, 0.86),
         (0.81, 0.97), (0.90, 0.95), (0.97, 0.96), (0.74, 0.75), (0.85, 0.73),
@@ -304,7 +316,6 @@ def paint_modern_tech_backdrop(buf, w, h):
         draw_circle(buf, w, h, nx, ny, 2, (224, 242, 254, 235), fill=True)
 
 # A) Splash Minimalista do Bootloader (640x480 - RGB 24-bit)
-#    Mantem exatamente o mesmo padrao visual do loading: fundo limpo + logo + nome do sistema
 W, H = 640, 480
 splash = bytearray([6, 12, 28, 255] * (W * H))
 paint_modern_tech_backdrop(splash, W, H)
@@ -320,7 +331,6 @@ title_scale = 2
 title_w = len(title_txt) * 6 * title_scale
 draw_text(splash, W, H, (W - title_w) // 2, 118, title_txt, title_scale, (255, 255, 255, 255))
 
-# Linha divisoria minimalista sutil acima da lista de opcoes
 for x in range(170, 470):
     blend_px(splash, W, H, x, 148, 56, 189, 248, 120)
 
@@ -333,7 +343,6 @@ os.makedirs(ply_dir, exist_ok=True)
 PW, PH = 1280, 800
 ply_bg = bytearray([6, 12, 28, 255] * (PW * PH))
 paint_modern_tech_backdrop(ply_bg, PW, PH)
-
 save_png_rgba(os.path.join(ply_dir, "background.png"), PW, PH, ply_bg)
 
 logo_path = os.path.join(ply_dir, "logo.png")
@@ -359,7 +368,7 @@ PY
 
 rm -f /tmp/eonluxos-logo-64.png
 
-# 5. Script do Plymouth (preenche 100% da barra no encerramento para reter o quadro completo)
+# 6. Script do Plymouth (preenche 100% da barra no encerramento para reter o quadro completo)
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
 Name=EonluxOS
@@ -468,10 +477,15 @@ if command -v plymouth-set-default-theme >/dev/null 2>&1; then
     plymouth-set-default-theme -R eonluxos || plymouth-set-default-theme eonluxos || true
 fi
 
+# 7. Pre-carrega modulos KMS/DRM no initramfs para eliminar os 4s de ecra preto inicial
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/splash
 
-# 6. Garante getty@tty1 silencioso e evita que o systemd limpe o splash antes do Xorg assumir
+for mod in drm_kms_helper i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs vboxvideo simpledrm; do
+    grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
+done
+
+# 8. Garante getty@tty1 silencioso e evita que o systemd limpe o splash antes do Xorg assumir
 systemctl unmask getty@tty1.service 2>/dev/null || true
 rm -f /etc/systemd/system/getty@tty1.service
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -484,14 +498,14 @@ EOF
 ln -sf /dev/null /etc/systemd/system/plymouth-quit.service
 ln -sf /dev/null /etc/systemd/system/plymouth-quit-wait.service
 
-# 7. Permite que o utilizador live inicie o Xorg diretamente
+# 9. Permite que o utilizador live inicie o Xorg diretamente
 mkdir -p /etc/X11
 cat <<'EOF' > /etc/X11/Xwrapper.config
 allowed_users=anybody
 needs_root_rights=yes
 EOF
 
-# 8. Atualiza cache de icones GTK e reconstroi o initramfs
+# 10. Atualiza cache de icones GTK e reconstroi o initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
