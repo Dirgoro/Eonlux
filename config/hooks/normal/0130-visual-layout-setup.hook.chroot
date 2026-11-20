@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-# 1. Normaliza quebras de linha (CRLF -> LF) e permissoes nos scripts e temas
+# 1. Normalizar quebras de linha CRLF -> LF e permissoes nos scripts EonluxOS
 for script in \
     /usr/local/bin/eonluxos-apply-defaults.sh \
     /usr/local/bin/eonluxos-window-fit.sh
@@ -16,41 +16,17 @@ if [ -f /usr/share/plymouth/themes/eonluxos/eonluxos.script ]; then
     sed -i 's/\r$//' /usr/share/plymouth/themes/eonluxos/eonluxos.script
 fi
 
-# 2. Rasteriza o logotipo oficial eonluxos-logo.svg para icones, Plymouth (emblem.png) e Bootloader
-SVG_LOGO="/usr/share/icons/hicolor/scalable/apps/eonluxos-logo.svg"
-THEME_DIR="/usr/share/plymouth/themes/eonluxos"
-
-mkdir -p \
-    /usr/share/icons/hicolor/24x24/apps \
-    /usr/share/icons/hicolor/48x48/apps \
-    /usr/share/pixmaps \
-    "$THEME_DIR"
-
-if [ -f "$SVG_LOGO" ] && command -v rsvg-convert >/dev/null 2>&1; then
-    chmod 0644 "$SVG_LOGO"
-    rsvg-convert -w 24 -h 24 "$SVG_LOGO" -o /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png
-    rsvg-convert -w 48 -h 48 "$SVG_LOGO" -o /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png
-    rsvg-convert -w 96 -h 96 "$SVG_LOGO" -o "${THEME_DIR}/emblem.png"
-    rsvg-convert -w 104 -h 104 "$SVG_LOGO" -o /tmp/eonluxos-logo-104.png
-    cp -f /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png /usr/share/pixmaps/eonluxos-logo.png
-fi
-
-chmod 0644 /usr/share/icons/hicolor/24x24/apps/eonluxos-logo.png 2>/dev/null || true
-chmod 0644 /usr/share/icons/hicolor/48x48/apps/eonluxos-logo.png 2>/dev/null || true
-chmod 0644 /usr/share/pixmaps/eonluxos-logo.png 2>/dev/null || true
-chmod 0644 "${THEME_DIR}/emblem.png" 2>/dev/null || true
-
-# 3. Gera texturas do Plymouth (RGBA) e eonlux-splash.png (640x480 RGB 24-bit para ISOLINUX/GRUB)
+# 2. Gerar ativos PNG do Plymouth e splash 640x480 RGB 24-bit do Bootloader (sem PIL)
 python3 - <<'PY'
-import os, struct, zlib
+import math, os, struct, zlib
 
-def write_png_rgba(path, w, h, buf):
+def write_png_rgba(path, w, h, pixels):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     raw = bytearray()
     stride = w * 4
     for y in range(h):
         raw.append(0)
-        raw.extend(buf[y * stride : (y + 1) * stride])
+        raw.extend(pixels[y * stride : (y + 1) * stride])
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
     ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
@@ -59,26 +35,20 @@ def write_png_rgba(path, w, h, buf):
         f.write(png)
 
 def write_png_rgb24(path, w, h, rgba_buf):
-    # ISOLINUX vesamenu.c32 exige PNG RGB 24-bit sem canal alfa (color_type = 2)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     raw = bytearray()
     for y in range(h):
         raw.append(0)
         row_off = y * w * 4
         for x in range(w):
-            idx = row_off + x * 4
-            raw.append(rgba_buf[idx])
-            raw.append(rgba_buf[idx + 1])
-            raw.append(rgba_buf[idx + 2])
+            p = row_off + x * 4
+            raw.extend(rgba_buf[p : p + 3])
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
     ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
     with open(path, "wb") as f:
         f.write(png)
-
-def solid_buf(w, h, rgba):
-    return bytearray(bytes(rgba) * (w * h))
 
 def read_png_rgba(path):
     if not os.path.exists(path):
@@ -143,41 +113,145 @@ def read_png_rgba(path):
             out[i*4+3] = 255
     return w, h, out
 
+def resize_rgba(src_w, src_h, src_buf, dst_w, dst_h):
+    dst = bytearray(dst_w * dst_h * 4)
+    for y in range(dst_h):
+        sy = min(src_h - 1, int((y + 0.5) * src_h / dst_h))
+        for x in range(dst_w):
+            sx = min(src_w - 1, int((x + 0.5) * src_w / dst_w))
+            sidx = (sy * src_w + sx) * 4
+            didx = (y * dst_w + x) * 4
+            dst[didx:didx+4] = src_buf[sidx:sidx+4]
+    return dst
+
+def lerp(a, b, t):
+    return int(a + (b - a) * t)
+
 theme_dir = "/usr/share/plymouth/themes/eonluxos"
-write_png_rgba(os.path.join(theme_dir, "progress-track.png"), 16, 6, solid_buf(16, 6, (22, 34, 59, 255)))
-write_png_rgba(os.path.join(theme_dir, "progress-fill.png"), 16, 6, solid_buf(16, 6, (19, 127, 236, 255)))
+assets_dir = "/usr/share/eonluxos"
+os.makedirs(theme_dir, exist_ok=True)
+os.makedirs(assets_dir, exist_ok=True)
 
+# 2a. Trilho e preenchimento da barra de progresso do Plymouth
+tw, th = 340, 8
+track = bytearray(tw * th * 4)
+for y in range(th):
+    for x in range(tw):
+        idx = (y * tw + x) * 4
+        if y == 0 or y == th - 1 or x == 0 or x == tw - 1:
+            track[idx:idx+4] = bytes((27, 53, 102, 255))
+        else:
+            track[idx:idx+4] = bytes((15, 29, 58, 255))
+write_png_rgba(os.path.join(theme_dir, "progress-track.png"), tw, th, track)
+
+fw, fh = 340, 8
+fill = bytearray(fw * fh * 4)
+for y in range(fh):
+    v_boost = 12 if y in (1, 2) else 0
+    for x in range(fw):
+        t = x / max(1, fw - 1)
+        r = min(255, lerp(14, 56, t) + v_boost)
+        g = min(255, lerp(98, 189, t) + v_boost)
+        b = min(255, lerp(199, 248, t) + v_boost)
+        idx = (y * fw + x) * 4
+        fill[idx:idx+4] = bytes((r, g, b, 255))
+write_png_rgba(os.path.join(theme_dir, "progress-fill.png"), fw, fh, fill)
+
+# 2b. Emblema orbital 96x96 (gera fallback caso emblema oficial nao esteja presente)
+emblem_path = os.path.join(theme_dir, "emblem.png")
+if not os.path.exists(emblem_path):
+    w, h = 96, 96
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    buf = bytearray(w * h * 4)
+    for y in range(h):
+        for x in range(w):
+            dx, dy = x - cx, y - cy
+            dist = math.hypot(dx, dy)
+            idx = (y * w + x) * 4
+            if dist <= 10.0:
+                buf[idx:idx+4] = b"\x38\xbd\xf8\xff"
+            elif 26.0 <= dist <= 29.5:
+                buf[idx:idx+4] = b"\x13\x7f\xec\xff"
+            elif 38.0 <= dist <= 40.5 and (dx + dy) > -18:
+                buf[idx:idx+4] = b"\x38\xbd\xf8\xcc"
+    write_png_rgba(emblem_path, w, h, buf)
+
+# 2c. Arte eonlux-splash.png (640x480 RGB 24-bit sem canal alfa para ISOLINUX e GRUB)
 W, H = 640, 480
-canvas = solid_buf(W, H, (6, 12, 28, 255))
+canvas = bytearray(W * H * 4)
+logo_cx, logo_cy = W / 2.0, 76.0
 
-def fill_rect(x0, y0, rw, rh, rgba):
-    r, g, b, a = rgba
+for y in range(H):
+    ty = y / (H - 1)
+    if ty < 0.5:
+        u = ty * 2.0
+        br, bg, bb = lerp(4, 6, u), lerp(8, 12, u), lerp(20, 28, u)
+    else:
+        u = (ty - 0.5) * 2.0
+        br, bg, bb = lerp(6, 10, u), lerp(12, 20, u), lerp(28, 43, u)
+    row = y * W * 4
+    for x in range(W):
+        dist = math.hypot((x - logo_cx) * 0.85, y - logo_cy)
+        glow = max(0.0, 1.0 - dist / 190.0) ** 2.3
+        r = min(255, int(br + 20 * glow))
+        g = min(255, int(bg + 68 * glow))
+        b = min(255, int(bb + 124 * glow))
+        idx = row + x * 4
+        canvas[idx:idx+4] = bytes((r, g, b, 255))
+
+def blend_rect(x0, y0, rw, rh, rgba):
+    sr, sg, sb, sa = rgba
+    inv = 255 - sa
     for y in range(max(0, y0), min(H, y0 + rh)):
         row = y * W * 4
         for x in range(max(0, x0), min(W, x0 + rw)):
             idx = row + x * 4
-            canvas[idx] = r
-            canvas[idx+1] = g
-            canvas[idx+2] = b
-            canvas[idx+3] = a
+            canvas[idx]     = (sr * sa + canvas[idx]     * inv) // 255
+            canvas[idx + 1] = (sg * sa + canvas[idx + 1] * inv) // 255
+            canvas[idx + 2] = (sb * sa + canvas[idx + 2] * inv) // 255
+            canvas[idx + 3] = 255
 
-# Faixas superior e inferior em azul eletrico (#137FEC) e ciano (#38BDF8)
-fill_rect(0, 0, W, 4, (19, 127, 236, 255))
-fill_rect(0, 4, W, 1, (56, 189, 248, 255))
-fill_rect(0, H - 4, W, 4, (19, 127, 236, 255))
+# Filete superior luminoso (#137FEC -> #38BDF8 -> #137FEC)
+for x in range(W):
+    t = 1.0 - abs((x / (W - 1)) * 2.0 - 1.0)
+    r = lerp(19, 56, t)
+    g = lerp(127, 189, t)
+    b = lerp(236, 248, t)
+    blend_rect(x, 0, 1, 3, (r, g, b, 255))
 
-# Cartao central emoldurado para o menu de opcoes
-fill_rect(76, 148, W - 152, 244, (10, 20, 44, 255))
-fill_rect(76, 148, W - 152, 1, (19, 127, 236, 255))
-fill_rect(76, 391, W - 152, 1, (19, 127, 236, 255))
-fill_rect(76, 148, 1, 244, (19, 127, 236, 255))
-fill_rect(W - 77, 148, 1, 244, (19, 127, 236, 255))
+# Cartao central escuro (#0D1A36) com borda #137FEC para abrigar o menu do bootloader
+cx0, cy0, cw, ch = 64, 146, W - 128, 258
+blend_rect(cx0 + 2, cy0 + 2, cw - 4, ch - 4, (13, 26, 54, 225))
+blend_rect(cx0 + 4, cy0, cw - 8, 1, (38, 118, 224, 255))
+blend_rect(cx0 + 4, cy0 + ch - 1, cw - 8, 1, (27, 68, 138, 255))
+blend_rect(cx0, cy0 + 4, 1, ch - 8, (27, 68, 138, 255))
+blend_rect(cx0 + cw - 1, cy0 + 4, 1, ch - 8, (27, 68, 138, 255))
+for dx, dy in [
+    (1,1), (2,1), (1,2),
+    (cw-2,1), (cw-3,1), (cw-2,2),
+    (1,ch-2), (2,ch-2), (1,ch-3),
+    (cw-2,ch-2), (cw-3,ch-2), (cw-2,ch-3),
+]:
+    blend_rect(cx0 + dx, cy0 + dy, 1, 1, (38, 118, 224, 255))
 
-logo_png = read_png_rgba("/tmp/eonluxos-logo-104.png")
-if logo_png:
-    lw, lh, lbuf = logo_png
+# Compoe o logotipo oficial do EonluxOS centralizado acima do cartao
+logo_loaded = None
+for logo_candidate in (
+    "/usr/share/icons/hicolor/128x128/apps/eonluxos-logo.png",
+    "/usr/share/icons/hicolor/96x96/apps/eonluxos-logo.png",
+    emblem_path,
+):
+    logo_loaded = read_png_rgba(logo_candidate)
+    if logo_loaded:
+        break
+
+if logo_loaded:
+    lw, lh, lbuf = logo_loaded
+    if lw != 96 or lh != 96:
+        lbuf = resize_rgba(lw, lh, lbuf, 96, 96)
+        lw, lh = 96, 96
     ox = (W - lw) // 2
-    oy = 22
+    oy = 26
     for y in range(lh):
         dy = oy + y
         if dy < 0 or dy >= H:
@@ -197,33 +271,43 @@ if logo_png:
             canvas[didx + 2] = (lbuf[sidx + 2] * alpha + canvas[didx + 2] * inv) // 255
             canvas[didx + 3] = 255
 
+write_png_rgb24(os.path.join(assets_dir, "eonlux-splash.png"), W, H, canvas)
 write_png_rgb24(os.path.join(theme_dir, "eonlux-splash.png"), W, H, canvas)
 PY
 
-rm -f /tmp/eonluxos-logo-104.png
+# 3. Remover overrides antigos de unidades systemd que causavam deadlock no boot
+rm -rf /etc/systemd/system/plymouth-quit.service.d
+rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
+rm -rf /etc/systemd/system/lightdm.service.d
+rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
 
-# 4. Garante o wallpaper oficial e sobrescreve os fallbacks azuis do Debian/XFCE
-WALLPAPER_DIR="/usr/share/backgrounds/eonluxos"
-WALLPAPER_FILE="${WALLPAPER_DIR}/eonlux-wallpaper.jpg"
-mkdir -p "$WALLPAPER_DIR"
+# 4. Configurar permissoes do Xorg (Xwrapper) e drop-in limpo do LightDM no vt7
+mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
+echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
-if [ ! -f "$WALLPAPER_FILE" ]; then
-    FOUND_WP=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | head -n 1)
-    if [ -n "$FOUND_WP" ]; then
-        cp -f "$FOUND_WP" "$WALLPAPER_FILE"
-    fi
-fi
+cat <<'EOF' > /etc/X11/Xwrapper.config
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+chmod 0644 /etc/X11/Xwrapper.config
 
-if [ -f "$WALLPAPER_FILE" ]; then
-    chmod 0644 "$WALLPAPER_FILE"
-    mkdir -p /usr/share/backgrounds/xfce /usr/share/images/desktop-base
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-verticals.png
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-shapes.svg
-    ln -sf "$WALLPAPER_FILE" /usr/share/backgrounds/xfce/xfce-blue.jpg
-    ln -sf "$WALLPAPER_FILE" /usr/share/images/desktop-base/default
-fi
+cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+[LightDM]
+minimum-vt=7
 
-# 5. Garante framebuffer imediato e modulos KMS/DRM no initramfs
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=xfce
+autologin-user=user
+autologin-user-timeout=0
+EOF
+chmod 0644 /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+
+systemctl unmask getty@tty1.service || true
+systemctl set-default graphical.target || true
+systemctl enable lightdm.service || true
+
+# 5. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
 mkdir -p /etc/initramfs-tools/conf.d
 echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
 
@@ -231,34 +315,9 @@ for mod in i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs simpledrm; do
     grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
 done
 
-# 6. Elimina texto de terminal no tty1 (MOTD/issue) e retem o Plymouth ate o Xorg iniciar
-: > /etc/motd
-: > /etc/issue
-: > /etc/issue.net
-chmod -x /etc/update-motd.d/* 2>/dev/null || true
-if [ -f /etc/pam.d/login ]; then
-    sed -i 's/^\s*session\s\+optional\s\+pam_motd\.so/# &/' /etc/pam.d/login || true
-fi
-mkdir -p /etc/skel
-touch /etc/skel/.hushlogin /root/.hushlogin
-chmod 0755 /etc/skel/.xinitrc 2>/dev/null || true
-
-# Desativa at-spi-dbus-bus para eliminar atraso de 15s do xfdesktop no inicio da sessao
-mkdir -p /etc/xdg/autostart
-if [ -f /etc/xdg/autostart/at-spi-dbus-bus.desktop ]; then
-    grep -qx "Hidden=true" /etc/xdg/autostart/at-spi-dbus-bus.desktop || echo "Hidden=true" >> /etc/xdg/autostart/at-spi-dbus-bus.desktop
-fi
-
-mkdir -p /etc/systemd/system/plymouth-quit.service.d /etc/systemd/system/plymouth-quit-wait.service.d
-printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit.service.d/override.conf
-printf "[Service]\nExecStart=\nExecStart=/bin/true\n" > /etc/systemd/system/plymouth-quit-wait.service.d/override.conf
-
-systemctl unmask getty@tty1.service 2>/dev/null || true
-
-# 7. Atualiza cache de icones GTK e fixa o tema Plymouth no initramfs
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-    gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
-    gtk-update-icon-cache -f -t /usr/share/icons/Papirus-Dark 2>/dev/null || true
+    gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+    gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark 2>/dev/null || true
 fi
 
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
