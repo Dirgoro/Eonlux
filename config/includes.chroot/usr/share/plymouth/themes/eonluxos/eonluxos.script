@@ -1,4 +1,4 @@
-// EonluxOS 1.0 Core - Tema Plymouth (Fundo com ondas/constelacao + Logo + Barra)
+// EonluxOS 1.0 Core - Tema Plymouth (Inicializacao e Encerramento no mesmo estilo visual)
 
 Window.SetBackgroundTopColor(0.024, 0.047, 0.110);     // #060C1C
 Window.SetBackgroundBottomColor(0.016, 0.031, 0.078);  // #040814
@@ -7,6 +7,11 @@ screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 center_x = screen_w / 2;
 center_y = screen_h / 2;
+
+mode = Plymouth.GetMode();
+is_shutdown = (mode == "shutdown");
+is_reboot = (mode == "reboot");
+is_closing = (is_shutdown || is_reboot);
 
 // 1. Fundo atmosferico (ondas luminosas + brilho superior + constelacao poligonal)
 bg_img = Image("plymouth-bg.png");
@@ -33,14 +38,25 @@ brand_title_sprite.SetX(center_x - (brand_title_img.GetWidth() / 2));
 brand_title_sprite.SetY(center_y - 14);
 brand_title_sprite.SetZ(10);
 
-// 4. Frases motivacionais entre o titulo e a barra de progresso
-title_img = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1, "Noto Sans 11");
+// 4. Mensagens conforme o modo atual (boot vs shutdown / reboot)
+if (is_shutdown) {
+    main_msg = "desligando o sistema, aguarde...";
+    sub_msg = "Salvando dados e encerrando serviços com segurança";
+} else if (is_reboot) {
+    main_msg = "reiniciando o sistema, aguarde...";
+    sub_msg = "Finalizando serviços e preparando nova inicialização";
+} else {
+    main_msg = "Seu equipamento ganhando nova vida...";
+    sub_msg = "Otimizando desempenho, memória e interface para você";
+}
+
+title_img = Image.Text(main_msg, 0.886, 0.910, 0.941, 1, "Noto Sans 11");
 title_sprite = Sprite(title_img);
 title_sprite.SetX(center_x - (title_img.GetWidth() / 2));
 title_sprite.SetY(center_y + 20);
 title_sprite.SetZ(10);
 
-sub_img = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1, "Noto Sans 9");
+sub_img = Image.Text(sub_msg, 0.580, 0.639, 0.722, 1, "Noto Sans 9");
 sub_sprite = Sprite(sub_img);
 sub_sprite.SetX(center_x - (sub_img.GetWidth() / 2));
 sub_sprite.SetY(center_y + 42);
@@ -68,7 +84,7 @@ fg_bar_sprite.SetX(bar_x);
 fg_bar_sprite.SetY(bar_y);
 fg_bar_sprite.SetZ(16);
 
-progress_val = 0.08;
+progress_val = is_closing ? 0.25 : 0.08;
 
 fun render_bar() {
     fill_w = Math.Int(bar_w * progress_val);
@@ -91,7 +107,12 @@ fun boot_progress_callback(duration, progress) {
 }
 
 fun refresh_callback() {
-    if (progress_val < 0.92) {
+    if (is_closing) {
+        if (progress_val < 0.96) {
+            progress_val = progress_val + 0.004;
+            render_bar();
+        }
+    } else if (progress_val < 0.92) {
         progress_val = progress_val + 0.0012;
         render_bar();
     }
