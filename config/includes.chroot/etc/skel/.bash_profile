@@ -3,7 +3,7 @@ if [ -f "$HOME/.profile" ]; then
     . "$HOME/.profile"
 fi
 
-# Fallback silencioso caso o LightDM nao assuma a sessao grafica
+# Arranque grafico silencioso e imediato com retencao visual do Plymouth
 if [ -z "${DISPLAY:-}" ]; then
     CURRENT_TTY="$(tty 2>/dev/null || true)"
     case "$CURRENT_TTY" in
@@ -12,6 +12,7 @@ if [ -z "${DISPLAY:-}" ]; then
                 if command -v plymouth >/dev/null 2>&1; then
                     plymouth quit --retain-splash 2>/dev/null || true
                 fi
+
                 VT_NUM="${CURRENT_TTY#/dev/tty}"
                 export NO_AT_BRIDGE=1
                 exec dbus-run-session -- startx "$HOME/.xinitrc" -- "vt${VT_NUM}" -keeptty > "$HOME/.startx.log" 2>&1
