@@ -55,7 +55,7 @@ fi
 
 # 4. Gera os ativos graficos em Python 3 puro:
 #    - Bootloader (640x480 RGB 24-bit com a logo oficial composta)
-#    - Plymouth background.png (1280x800 moderno na paleta #060C1C / #137FEC / #38BDF8)
+#    - Plymouth background.png (1280x800 limpo, sem retangulo central)
 #    - Barras de progresso do Plymouth (progress_box.png e progress_bar.png)
 python3 - <<'PY'
 import math
@@ -347,33 +347,13 @@ for y in range(188, 377):
 
 save_png_rgb("/usr/share/eonluxos/eonlux-splash.png", W, H, splash)
 
-# B) Fundo moderno do Plymouth (1280x800 RGBA) + Logo Oficial + Barra
+# B) Fundo moderno do Plymouth (1280x800 RGBA) sem retangulo central
 ply_dir = "/usr/share/plymouth/themes/eonluxos"
 os.makedirs(ply_dir, exist_ok=True)
 
 PW, PH = 1280, 800
 ply_bg = bytearray([6, 12, 28, 255] * (PW * PH))
 paint_modern_tech_backdrop(ply_bg, PW, PH)
-
-# Painel central translucido sutil para destacar a logo oficial e a barra de carregamento
-card_w, card_h = 560, 380
-cx0 = (PW - card_w) // 2
-cy0 = (PH - card_h) // 2
-cx1 = cx0 + card_w
-cy1 = cy0 + card_h
-
-for y in range(cy0, cy1):
-    for x in range(cx0, cx1):
-        is_edge = (x == cx0 or x == cx1 - 1 or y == cy0 or y == cy1 - 1)
-        if is_edge:
-            blend_px(ply_bg, PW, PH, x, y, 56, 189, 248, 165)
-        else:
-            blend_px(ply_bg, PW, PH, x, y, 8, 18, 42, 185)
-
-# Linha superior de destaque neon no cartao central
-for y in range(cy0, cy0 + 2):
-    for x in range(cx0 + 40, cx1 - 40):
-        blend_px(ply_bg, PW, PH, x, y, 56, 189, 248, 240)
 
 save_png_rgba(os.path.join(ply_dir, "background.png"), PW, PH, ply_bg)
 
