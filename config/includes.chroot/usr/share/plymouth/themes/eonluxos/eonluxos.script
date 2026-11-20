@@ -1,43 +1,56 @@
-// EonluxOS 1.0 Core - Tema Plymouth com Logo Oficial, Halo e Barra Fluida
+// EonluxOS 1.0 Core - Tema Plymouth (Fundo com ondas/constelacao + Logo + Barra)
 
-Window.SetBackgroundTopColor(0.016, 0.031, 0.078);     // #040814
-Window.SetBackgroundBottomColor(0.039, 0.078, 0.169);  // #0A142B
+Window.SetBackgroundTopColor(0.024, 0.047, 0.110);     // #060C1C
+Window.SetBackgroundBottomColor(0.016, 0.031, 0.078);  // #040814
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 center_x = screen_w / 2;
 center_y = screen_h / 2;
 
-// 1. Halo radial suave atras do logotipo oficial
-aura_img = Image("glow-aura.png");
-if (aura_img) {
-    aura_sprite = Sprite(aura_img);
-    aura_sprite.SetX(center_x - (aura_img.GetWidth() / 2));
-    aura_sprite.SetY(center_y - 98 - (aura_img.GetHeight() / 2));
-    aura_sprite.SetZ(5);
+// 1. Fundo atmosferico (ondas luminosas + brilho superior + constelacao poligonal)
+bg_img = Image("plymouth-bg.png");
+if (bg_img) {
+    bg_sprite = Sprite(bg_img.Scale(screen_w, screen_h));
+    bg_sprite.SetX(0);
+    bg_sprite.SetY(0);
+    bg_sprite.SetZ(1);
 }
 
-// 2. Logotipo oficial EonluxOS (rasterizado de eonluxos-logo.svg)
+// 2. Logotipo oficial EonluxOS centralizado
 emblem_img = Image("emblem.png");
 if (emblem_img) {
     emblem_sprite = Sprite(emblem_img);
     emblem_sprite.SetX(center_x - (emblem_img.GetWidth() / 2));
-    emblem_sprite.SetY(center_y - 98 - (emblem_img.GetHeight() / 2));
+    emblem_sprite.SetY(center_y - 84 - (emblem_img.GetHeight() / 2));
     emblem_sprite.SetZ(10);
 }
 
-// 3. Titulo da marca com realce ciano (#38BDF8)
-brand_title_img = Image.Text("EonluxOS 1.0 Core", 0.220, 0.741, 0.973, 1, "Noto Sans Bold 16");
+// 3. Titulo principal em branco nitido
+brand_title_img = Image.Text("EonluxOS 1.0 Core", 1.0, 1.0, 1.0, 1, "Noto Sans Bold 16");
 brand_title_sprite = Sprite(brand_title_img);
 brand_title_sprite.SetX(center_x - (brand_title_img.GetWidth() / 2));
-brand_title_sprite.SetY(center_y - 30);
+brand_title_sprite.SetY(center_y - 14);
 brand_title_sprite.SetZ(10);
 
-// 4. Barra de progresso tonal (#137FEC -> #38BDF8 sobre trilho #0F1D3A)
+// 4. Frases motivacionais entre o titulo e a barra de progresso
+title_img = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1, "Noto Sans 11");
+title_sprite = Sprite(title_img);
+title_sprite.SetX(center_x - (title_img.GetWidth() / 2));
+title_sprite.SetY(center_y + 20);
+title_sprite.SetZ(10);
+
+sub_img = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1, "Noto Sans 9");
+sub_sprite = Sprite(sub_img);
+sub_sprite.SetX(center_x - (sub_img.GetWidth() / 2));
+sub_sprite.SetY(center_y + 42);
+sub_sprite.SetZ(10);
+
+// 5. Barra de progresso (#137FEC -> #38BDF8 sobre trilho #0F1D3A)
 bar_w = 340;
-bar_h = 8;
+bar_h = 6;
 bar_x = center_x - (bar_w / 2);
-bar_y = center_y + 12;
+bar_y = center_y + 74;
 
 bar_track = Image("progress-track.png");
 bar_fill = Image("progress-fill.png");
@@ -54,19 +67,6 @@ fg_bar_sprite = Sprite();
 fg_bar_sprite.SetX(bar_x);
 fg_bar_sprite.SetY(bar_y);
 fg_bar_sprite.SetZ(16);
-
-// 5. Mensagens informativas
-title_img = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1, "Noto Sans Bold 11");
-title_sprite = Sprite(title_img);
-title_sprite.SetX(center_x - (title_img.GetWidth() / 2));
-title_sprite.SetY(bar_y + 24);
-title_sprite.SetZ(10);
-
-sub_img = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1, "Noto Sans 9");
-sub_sprite = Sprite(sub_img);
-sub_sprite.SetX(center_x - (sub_img.GetWidth() / 2));
-sub_sprite.SetY(bar_y + 48);
-sub_sprite.SetZ(10);
 
 progress_val = 0.08;
 
@@ -90,7 +90,6 @@ fun boot_progress_callback(duration, progress) {
     render_bar();
 }
 
-// Avanco suave continuo durante o carregamento do SquashFS no modo Live
 fun refresh_callback() {
     if (progress_val < 0.92) {
         progress_val = progress_val + 0.0012;
