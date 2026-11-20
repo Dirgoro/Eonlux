@@ -26,3 +26,5 @@ thunar
 wmctrl
 plymouth
 plymouth-themes
+calamares
+calamares-settings-debian
