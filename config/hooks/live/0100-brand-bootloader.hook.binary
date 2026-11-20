@@ -23,7 +23,6 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
-# Alinha o menu ISOLINUX (640x480) exatamente dentro do cartao central da imagem
 if [ -d binary/isolinux ]; then
     cat <<'EOF' > binary/isolinux/stdmenu.cfg
 MENU BACKGROUND eonlux-splash.png
@@ -54,4 +53,8 @@ MENU COLOR timeout_msg  37;40   #ff94a3b8 #00000000 none
 MENU COLOR timeout      1;36;40 #ff38bdf8 #00000000 none
 MENU COLOR help         37;40   #ff94a3b8 #00000000 none
 EOF
+
+    if [ -f binary/isolinux/menu.cfg ]; then
+        sed -i 's|^menu background .*|menu background eonlux-splash.png|I' binary/isolinux/menu.cfg || true
+    fi
 fi
