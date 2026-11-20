@@ -70,8 +70,8 @@ fi
 
 # 5. Gera os ativos graficos em Python 3 puro:
 #    - Bootloader minimalista (640x480 RGB 24-bit com logo oficial e nome do sistema)
-#    - Plymouth background.png (1280x800 limpo, sem retangulo central)
-#    - Barras de progresso do Plymouth (progress_box.png e progress_bar.png)
+#    - Plymouth background.png (boot) e background-shutdown.png (desligamento/reinicio)
+#    - Barras de progresso e divisor minimalista do Plymouth
 python3 - <<'PY'
 import math
 import os
@@ -315,6 +315,17 @@ def paint_modern_tech_backdrop(buf, w, h):
         draw_circle(buf, w, h, nx, ny, 3, (56, 189, 248, 105), fill=True)
         draw_circle(buf, w, h, nx, ny, 2, (224, 242, 254, 235), fill=True)
 
+def paint_shutdown_backdrop(buf, w, h):
+    # Fundo mais sereno e minimalista para encerramento (halo central suave + horizonte sutil)
+    for gr in range(int(min(w, h) * 0.44), 10, -8):
+        a = int(16 * (1 - gr / (min(w, h) * 0.44)))
+        draw_circle(buf, w, h, int(w * 0.5), int(h * 0.36), gr, (14, 116, 210, a), fill=True)
+
+    for rx in range(int(w * 0.18), int(w * 0.82)):
+        t = abs((rx - w * 0.5) / (w * 0.32))
+        alpha = int(85 * max(0.0, 1.0 - t * t))
+        blend_px(buf, w, h, rx, int(h * 0.65), 56, 189, 248, alpha)
+
 # A) Splash Minimalista do Bootloader (640x480 - RGB 24-bit)
 W, H = 640, 480
 splash = bytearray([6, 12, 28, 255] * (W * H))
@@ -336,7 +347,7 @@ for x in range(170, 470):
 
 save_png_rgb("/usr/share/eonluxos/eonlux-splash.png", W, H, splash)
 
-# B) Fundo moderno do Plymouth (1280x800 RGBA) sem retangulo central
+# B) Fundos do Plymouth (1280x800 RGBA): boot vs shutdown/reboot
 ply_dir = "/usr/share/plymouth/themes/eonluxos"
 os.makedirs(ply_dir, exist_ok=True)
 
@@ -344,6 +355,10 @@ PW, PH = 1280, 800
 ply_bg = bytearray([6, 12, 28, 255] * (PW * PH))
 paint_modern_tech_backdrop(ply_bg, PW, PH)
 save_png_rgba(os.path.join(ply_dir, "background.png"), PW, PH, ply_bg)
+
+ply_shutdown_bg = bytearray([4, 9, 22, 255] * (PW * PH))
+paint_shutdown_backdrop(ply_shutdown_bg, PW, PH)
+save_png_rgba(os.path.join(ply_dir, "background-shutdown.png"), PW, PH, ply_shutdown_bg)
 
 logo_path = os.path.join(ply_dir, "logo.png")
 if not os.path.exists(logo_path):
@@ -368,11 +383,11 @@ PY
 
 rm -f /tmp/eonluxos-logo-64.png
 
-# 6. Script do Plymouth (preenche 100% da barra no encerramento para reter o quadro completo)
+# 6. Script do Plymouth com telas e mensagens distintas para Boot, Desligamento e Reinicio
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.plymouth
 [Plymouth Theme]
 Name=EonluxOS
-Description=EonluxOS 1.0 Core Boot Splash
+Description=EonluxOS 1.0 Core Boot and Shutdown Splash
 ModuleName=script
 
 [script]
@@ -381,13 +396,26 @@ ScriptFile=/usr/share/plymouth/themes/eonluxos/eonluxos.script
 EOF
 
 cat <<'EOF' > /usr/share/plymouth/themes/eonluxos/eonluxos.script
-Window.SetBackgroundTopColor(0.0235, 0.0470, 0.1098);
-Window.SetBackgroundBottomColor(0.0235, 0.0470, 0.1098);
+mode = Plymouth.GetMode();
+is_power_transition = (mode == "shutdown" || mode == "reboot");
+
+if (is_power_transition) {
+    Window.SetBackgroundTopColor(0.0157, 0.0353, 0.0863);
+    Window.SetBackgroundBottomColor(0.0157, 0.0353, 0.0863);
+} else {
+    Window.SetBackgroundTopColor(0.0235, 0.0470, 0.1098);
+    Window.SetBackgroundBottomColor(0.0235, 0.0470, 0.1098);
+}
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 
-bg.raw = Image("background.png");
+if (is_power_transition) {
+    bg.raw = Image("background-shutdown.png");
+} else {
+    bg.raw = Image("background.png");
+}
+
 if (bg.raw) {
     bg.image = bg.raw.Scale(screen_w, screen_h);
     bg.sprite = Sprite(bg.image);
@@ -408,69 +436,83 @@ title.sprite.SetX(screen_w / 2 - title.image.GetWidth() / 2);
 title.sprite.SetY(screen_h / 2 + 12);
 title.sprite.SetZ(10);
 
-sub1.image = Image.Text("Seu equipamento ganhando nova vida...", 0.886, 0.910, 0.941, 1.0, "Noto Sans 11");
+if (mode == "shutdown") {
+    line1_text = "Encerrando o sistema com segurança...";
+    line2_text = "Salvando alterações e finalizando processos antes de desligar";
+} else if (mode == "reboot") {
+    line1_text = "Reiniciando o EonluxOS...";
+    line2_text = "Finalizando serviços e preparando uma nova inicialização";
+} else {
+    line1_text = "Seu equipamento ganhando nova vida...";
+    line2_text = "Otimizando desempenho, memória e interface para você";
+}
+
+sub1.image = Image.Text(line1_text, 0.886, 0.910, 0.941, 1.0, "Noto Sans 11");
 sub1.sprite = Sprite(sub1.image);
 sub1.sprite.SetX(screen_w / 2 - sub1.image.GetWidth() / 2);
 sub1.sprite.SetY(screen_h / 2 + 52);
 sub1.sprite.SetZ(10);
 
-sub2.image = Image.Text("Otimizando desempenho, memória e interface para você", 0.580, 0.639, 0.722, 1.0, "Noto Sans 9");
+sub2.image = Image.Text(line2_text, 0.580, 0.639, 0.722, 1.0, "Noto Sans 9");
 sub2.sprite = Sprite(sub2.image);
 sub2.sprite.SetX(screen_w / 2 - sub2.image.GetWidth() / 2);
 sub2.sprite.SetY(screen_h / 2 + 76);
 sub2.sprite.SetZ(10);
 
-pbox.image = Image("progress_box.png");
-pbox.sprite = Sprite(pbox.image);
-pbox.x = screen_w / 2 - pbox.image.GetWidth() / 2;
-pbox.y = screen_h / 2 + 114;
-pbox.sprite.SetX(pbox.x);
-pbox.sprite.SetY(pbox.y);
-pbox.sprite.SetZ(10);
+# Exibe a barra de progresso apenas durante o arranque (boot)
+if (!is_power_transition) {
+    pbox.image = Image("progress_box.png");
+    pbox.sprite = Sprite(pbox.image);
+    pbox.x = screen_w / 2 - pbox.image.GetWidth() / 2;
+    pbox.y = screen_h / 2 + 114;
+    pbox.sprite.SetX(pbox.x);
+    pbox.sprite.SetY(pbox.y);
+    pbox.sprite.SetZ(10);
 
-pbar.original = Image("progress_bar.png");
-pbar.sprite = Sprite();
-pbar.sprite.SetX(pbox.x);
-pbar.sprite.SetY(pbox.y);
-pbar.sprite.SetZ(11);
+    pbar.original = Image("progress_bar.png");
+    pbar.sprite = Sprite();
+    pbar.sprite.SetX(pbox.x);
+    pbar.sprite.SetY(pbox.y);
+    pbar.sprite.SetZ(11);
 
-current_progress = 0.08;
-fun update_bar(val) {
-    if (val < 0.08) {
-        val = 0.08;
-    }
-    if (val > 1.0) {
-        val = 1.0;
-    }
-    w = Math.Int(pbar.original.GetWidth() * val);
-    if (w < 8) {
-        w = 8;
-    }
-    pbar.scaled = pbar.original.Scale(w, pbar.original.GetHeight());
-    pbar.sprite.SetImage(pbar.scaled);
-}
-update_bar(current_progress);
-
-fun progress_callback(duration, progress) {
-    if (progress > current_progress) {
-        current_progress = progress;
+    current_progress = 0.08;
+    fun update_bar(val) {
+        if (val < 0.08) {
+            val = 0.08;
+        }
+        if (val > 1.0) {
+            val = 1.0;
+        }
+        w = Math.Int(pbar.original.GetWidth() * val);
+        if (w < 8) {
+            w = 8;
+        }
+        pbar.scaled = pbar.original.Scale(w, pbar.original.GetHeight());
+        pbar.sprite.SetImage(pbar.scaled);
     }
     update_bar(current_progress);
-}
-Plymouth.SetBootProgressFunction(progress_callback);
 
-fun refresh_callback() {
-    if (current_progress < 0.96) {
-        current_progress = current_progress + 0.008;
+    fun progress_callback(duration, progress) {
+        if (progress > current_progress) {
+            current_progress = progress;
+        }
         update_bar(current_progress);
     }
-}
-Plymouth.SetRefreshFunction(refresh_callback);
+    Plymouth.SetBootProgressFunction(progress_callback);
 
-fun quit_callback() {
-    update_bar(1.0);
+    fun refresh_callback() {
+        if (current_progress < 0.96) {
+            current_progress = current_progress + 0.008;
+            update_bar(current_progress);
+        }
+    }
+    Plymouth.SetRefreshFunction(refresh_callback);
+
+    fun quit_callback() {
+        update_bar(1.0);
+    }
+    Plymouth.SetQuitFunction(quit_callback);
 }
-Plymouth.SetQuitFunction(quit_callback);
 EOF
 
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
