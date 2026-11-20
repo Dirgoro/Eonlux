@@ -150,7 +150,6 @@ class EonluxPowerWindow(Gtk.Window):
         main_box.set_name("main-container")
         self.add(main_box)
 
-        # Cabecalho com logotipo oficial e titulo
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         header_box.set_halign(Gtk.Align.CENTER)
 
@@ -168,7 +167,6 @@ class EonluxPowerWindow(Gtk.Window):
 
         main_box.pack_start(header_box, False, False, 0)
 
-        # Grade com as 3 opcoes principais
         actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
         actions_box.set_halign(Gtk.Align.CENTER)
 
@@ -198,7 +196,6 @@ class EonluxPowerWindow(Gtk.Window):
 
         main_box.pack_start(actions_box, True, True, 2)
 
-        # Rodape com botao Cancelar
         footer_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         footer_box.set_halign(Gtk.Align.CENTER)
 
