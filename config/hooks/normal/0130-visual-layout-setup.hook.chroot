@@ -244,7 +244,6 @@ def render_plymouth_backdrop(w, h):
     return buf
 
 def render_minimal_bootloader_backdrop(w, h):
-    # Estilo minimalista limpo: degrade profundo #060C1C, halo suave no topo e 1 arco sutil
     buf = bytearray(w * h * 4)
     cx, cy = w * 0.50, 74.0
     max_r = 210.0
@@ -265,7 +264,6 @@ def render_minimal_bootloader_backdrop(w, h):
             idx = row + x * 4
             buf[idx:idx+4] = bytes((r, g, b, 255))
 
-    # Dois arcos minimalistas bem sutis nas extremidades (identidade visual sem poluicao)
     def add_px(px, py, sr, sg, sb, sa):
         ix, iy = int(px), int(py)
         if 0 <= ix < w and 0 <= iy < h and sa > 0:
@@ -278,11 +276,9 @@ def render_minimal_bootloader_backdrop(w, h):
         alpha = 42 - k * 14
         for s in range(360):
             t = s / 359.0
-            # Arco minimalista no canto inferior direito
             px = w * (0.64 + 0.38 * t)
             py = h * (1.02 - 0.22 * (t ** 1.45)) + k * 7
             add_px(px, py, 56, 189, 248, alpha)
-            # Arco minimalista no canto superior esquerdo
             px2 = w * (-0.02 + 0.34 * t)
             py2 = h * (0.20 * ((1.0 - t) ** 1.45)) - k * 7
             add_px(px2, py2, 56, 189, 248, alpha)
@@ -321,12 +317,153 @@ if not os.path.exists(emblem_path):
     w, h = 96, 96
     cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
     buf = bytearray(w * h * 4)
+    px_core = bytes((56, 189, 248, 255))
+    px_ring = bytes((19, 127, 236, 255))
+    px_arc  = bytes((56, 189, 248, 204))
     for y in range(h):
         for x in range(w):
             dx, dy = x - cx, y - cy
             dist = math.hypot(dx, dy)
             idx = (y * w + x) * 4
             if dist <= 10.0:
-                buf[idx:idx+4] = b"\x38\xbd\xf8\xff"
+                buf[idx:idx+4] = px_core
             elif 26.0 <= dist <= 29.5:
-                buf[idx:idx+4] = b"\x13\x7f
+                buf[idx:idx+4] = px_ring
+            elif 38.0 <= dist <= 40.5 and (dx + dy) > -18:
+                buf[idx:idx+4] = px_arc
+    write_png_rgba(emblem_path, w, h, buf)
+
+# 2c. Fundo rico do Plymouth (1024x600 com ondas luminosas + constelacao)
+ply_bg = render_plymouth_backdrop(1024, 600)
+write_png_rgba(os.path.join(theme_dir, "plymouth-bg.png"), 1024, 600, ply_bg)
+
+# 2d. Arte minimalista do Bootloader (640x480 RGB 24-bit sem alfa para ISOLINUX e GRUB)
+W, H = 640, 480
+canvas = render_minimal_bootloader_backdrop(W, H)
+
+def blend_rect(x0, y0, rw, rh, rgba):
+    sr, sg, sb, sa = rgba
+    inv = 255 - sa
+    for y in range(max(0, y0), min(H, y0 + rh)):
+        row = y * W * 4
+        for x in range(max(0, x0), min(W, x0 + rw)):
+            idx = row + x * 4
+            canvas[idx]     = (sr * sa + canvas[idx]     * inv) // 255
+            canvas[idx + 1] = (sg * sa + canvas[idx + 1] * inv) // 255
+            canvas[idx + 2] = (sb * sa + canvas[idx + 2] * inv) // 255
+            canvas[idx + 3] = 255
+
+# Filete superior luminoso (#137FEC -> #38BDF8 -> #137FEC)
+for x in range(W):
+    t = 1.0 - abs((x / (W - 1)) * 2.0 - 1.0)
+    r = lerp(19, 56, t)
+    g = lerp(127, 189, t)
+    b = lerp(236, 248, t)
+    blend_rect(x, 0, 1, 2, (r, g, b, 255))
+
+# Cartao central minimalista (#0B162E) com borda fina #1E4E9C
+cx0, cy0, cw, ch = 68, 148, W - 136, 254
+blend_rect(cx0 + 2, cy0 + 2, cw - 4, ch - 4, (11, 22, 46, 225))
+blend_rect(cx0 + 4, cy0, cw - 8, 1, (42, 132, 238, 255))
+blend_rect(cx0 + 4, cy0 + ch - 1, cw - 8, 1, (26, 64, 128, 255))
+blend_rect(cx0, cy0 + 4, 1, ch - 8, (26, 64, 128, 255))
+blend_rect(cx0 + cw - 1, cy0 + 4, 1, ch - 8, (26, 64, 128, 255))
+for dx, dy in [
+    (1,1), (2,1), (1,2),
+    (cw-2,1), (cw-3,1), (cw-2,2),
+    (1,ch-2), (2,ch-2), (1,ch-3),
+    (cw-2,ch-2), (cw-3,ch-2), (cw-2,ch-3),
+]:
+    blend_rect(cx0 + dx, cy0 + dy, 1, 1, (42, 132, 238, 255))
+
+# Compoe o logotipo oficial do EonluxOS centralizado acima do cartao
+logo_loaded = None
+for logo_candidate in (
+    "/usr/share/icons/hicolor/128x128/apps/eonluxos-logo.png",
+    "/usr/share/icons/hicolor/96x96/apps/eonluxos-logo.png",
+    emblem_path,
+):
+    logo_loaded = read_png_rgba(logo_candidate)
+    if logo_loaded:
+        break
+
+if logo_loaded:
+    lw, lh, lbuf = logo_loaded
+    if lw != 88 or lh != 88:
+        lbuf = resize_rgba(lw, lh, lbuf, 88, 88)
+        lw, lh = 88, 88
+    ox = (W - lw) // 2
+    oy = 30
+    for y in range(lh):
+        dy = oy + y
+        if dy < 0 or dy >= H:
+            continue
+        for x in range(lw):
+            dx = ox + x
+            if dx < 0 or dx >= W:
+                continue
+            sidx = (y * lw + x) * 4
+            alpha = lbuf[sidx + 3]
+            if alpha == 0:
+                continue
+            didx = (dy * W + dx) * 4
+            inv = 255 - alpha
+            canvas[didx]     = (lbuf[sidx]     * alpha + canvas[didx]     * inv) // 255
+            canvas[didx + 1] = (lbuf[sidx + 1] * alpha + canvas[didx + 1] * inv) // 255
+            canvas[didx + 2] = (lbuf[sidx + 2] * alpha + canvas[didx + 2] * inv) // 255
+            canvas[didx + 3] = 255
+
+write_png_rgb24(os.path.join(assets_dir, "eonlux-splash.png"), W, H, canvas)
+write_png_rgb24(os.path.join(theme_dir, "eonlux-splash.png"), W, H, canvas)
+PY
+
+# 3. Remover overrides antigos de unidades systemd que causavam deadlock no boot
+rm -rf /etc/systemd/system/plymouth-quit.service.d
+rm -rf /etc/systemd/system/plymouth-quit-wait.service.d
+rm -rf /etc/systemd/system/lightdm.service.d
+rm -f /etc/lightdm/lightdm.conf.d/50-eonluxos-plymouth.conf
+
+# 4. Configurar permissoes do Xorg (Xwrapper) e drop-in limpo do LightDM no vt7
+mkdir -p /etc/X11 /etc/lightdm/lightdm.conf.d
+echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
+
+cat <<'EOF' > /etc/X11/Xwrapper.config
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+chmod 0644 /etc/X11/Xwrapper.config
+
+cat <<'EOF' > /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+[LightDM]
+minimum-vt=7
+
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=xfce
+autologin-user=user
+autologin-user-timeout=0
+EOF
+chmod 0644 /etc/lightdm/lightdm.conf.d/50-eonluxos-autologin.conf
+
+systemctl unmask getty@tty1.service || true
+systemctl set-default graphical.target || true
+systemctl enable lightdm.service || true
+
+# 5. Configurar Plymouth no initramfs com FRAMEBUFFER=y e modulos KMS
+mkdir -p /etc/initramfs-tools/conf.d
+echo "FRAMEBUFFER=y" > /etc/initramfs-tools/conf.d/eonluxos-plymouth
+
+for mod in i915 amdgpu radeon nouveau vmwgfx virtio_gpu bochs simpledrm; do
+    grep -qx "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" >> /etc/initramfs-tools/modules
+done
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+    gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark 2>/dev/null || true
+fi
+
+if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+    plymouth-set-default-theme -R eonluxos || update-initramfs -u -k all
+elif command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -u -k all
+fi
