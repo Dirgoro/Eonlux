@@ -1,0 +1,16 @@
+#!/bin/sh
+# EonluxOS 1.0 Core - Lancador da tela personalizada de desligamento
+
+export GTK_THEME="Adwaita-dark"
+
+if pgrep -f "/usr/local/bin/eonluxos-power-menu.py" >/dev/null 2>&1; then
+    exit 0
+fi
+
+if command -v python3 >/dev/null 2>&1 && [ -f /usr/local/bin/eonluxos-power-menu.py ]; then
+    exec python3 /usr/local/bin/eonluxos-power-menu.py
+fi
+
+if [ -x /usr/bin/xfce4-session-logout.real ]; then
+    exec /usr/bin/xfce4-session-logout.real "$@"
+fi
