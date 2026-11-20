@@ -23,11 +23,21 @@ if [ -n "$SPLASH_SRC" ]; then
     fi
 fi
 
-# 1. ISOLINUX (BIOS) - Garante vesamenu.c32 e resolucao 640x480
+# 1. ISOLINUX (BIOS) - Copia modulos VESA a partir do chroot ou host e ativa fundo 640x480
 if [ -d binary/isolinux ]; then
-    for mod in vesamenu.c32 libcom32.c32 libutil.c32; do
-        if [ ! -f "binary/isolinux/$mod" ] && [ -f "/usr/lib/syslinux/modules/bios/$mod" ]; then
-            cp -f "/usr/lib/syslinux/modules/bios/$mod" "binary/isolinux/$mod"
+    for mod in vesamenu.c32 libcom32.c32 libutil.c32 ldlinux.c32; do
+        if [ ! -f "binary/isolinux/$mod" ]; then
+            for dir in \
+                chroot/usr/lib/syslinux/modules/bios \
+                chroot/usr/lib/ISOLINUX \
+                /usr/lib/syslinux/modules/bios \
+                /usr/lib/ISOLINUX
+            do
+                if [ -f "$dir/$mod" ]; then
+                    cp -f "$dir/$mod" "binary/isolinux/$mod"
+                    break
+                fi
+            done
         fi
     done
 
@@ -71,8 +81,8 @@ EOF
     done
 
     for cfg in binary/isolinux/menu.cfg binary/isolinux/isolinux.cfg; do
-        if [ -f "$cfg" ] && ! grep -qi 'menu resolution' "$cfg"; then
-            sed -i '1i MENU RESOLUTION 640 480' "$cfg" || true
+        if [ -f "$cfg" ] && ! grep -qi 'include stdmenu.cfg' "$cfg"; then
+            printf '\ninclude stdmenu.cfg\n' >> "$cfg"
         fi
     done
 fi
