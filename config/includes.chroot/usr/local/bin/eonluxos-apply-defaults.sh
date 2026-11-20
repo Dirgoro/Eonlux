@@ -18,7 +18,26 @@ if command -v xrandr >/dev/null 2>&1; then
     xrandr --auto 2>/dev/null || true
 fi
 
-# 2. Aplica temas escuros, fontes, notificacoes, dock centralizada e wallpaper
+# 2. Gerencia o icone "Instalar Eonlux Core" (exibe apenas em sessao Live)
+DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+INSTALLER_ICON="$DESKTOP_DIR/install-eonluxos.desktop"
+
+if [ -d /run/live/medium ] || grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
+    mkdir -p "$DESKTOP_DIR"
+    if [ ! -f "$INSTALLER_ICON" ] && [ -f /etc/skel/Desktop/install-eonluxos.desktop ]; then
+        cp -f /etc/skel/Desktop/install-eonluxos.desktop "$INSTALLER_ICON"
+    fi
+    if [ -f "$INSTALLER_ICON" ]; then
+        chmod +x "$INSTALLER_ICON" 2>/dev/null || true
+        if command -v gio >/dev/null 2>&1; then
+            gio set "$INSTALLER_ICON" metadata::trusted true 2>/dev/null || true
+        fi
+    fi
+else
+    rm -f "$INSTALLER_ICON" 2>/dev/null || true
+fi
+
+# 3. Aplica temas escuros, fontes, notificacoes, dock centralizada e wallpaper
 if command -v xfconf-query >/dev/null 2>&1; then
     xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Adwaita-dark" 2>/dev/null || true
     xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark" 2>/dev/null || true
@@ -39,9 +58,11 @@ if command -v xfconf-query >/dev/null 2>&1; then
         fi
     fi
 
-    # Icones compactos na area de trabalho (30px, clique unico)
+    # Icones compactos na area de trabalho sem corte no texto
     xfconf-query -c xfce4-desktop -p /desktop-icons/icon-size -n -t uint -s 30 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p /desktop-icons/single-click -n -t bool -s true 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p /desktop-icons/cell-spacing -n -t int -s 6 2>/dev/null || true
+    xfconf-query -c xfce4-desktop -p /desktop-icons/center-text -n -t bool -s true 2>/dev/null || true
     xfconf-query -c xfce4-desktop -p /desktop-icons/file-icons/show-filesystem -n -t bool -s false 2>/dev/null || true
 
     # Aplica wallpaper proporcional em todos os monitores e workspaces detectados
@@ -62,7 +83,7 @@ if command -v xfconf-query >/dev/null 2>&1; then
     fi
 fi
 
-# 3. Inicia applets de rede, Bluetooth e dock Plank (se disponivel)
+# 4. Inicia applets de rede, Bluetooth e dock Plank (se disponivel)
 if command -v nm-applet >/dev/null 2>&1; then
     pgrep -x nm-applet >/dev/null 2>&1 || nm-applet >/dev/null 2>&1 &
 fi
@@ -75,14 +96,13 @@ if command -v plank >/dev/null 2>&1; then
     pgrep -x plank >/dev/null 2>&1 || plank >/dev/null 2>&1 &
 fi
 
-# 4. Inicia daemon de ajuste automatico de janelas para telas 1024x600
+# 5. Inicia daemon de ajuste automatico de janelas para telas 1024x600
 if [ -x /usr/local/bin/eonluxos-window-fit.sh ]; then
     pgrep -f eonluxos-window-fit.sh >/dev/null 2>&1 || /usr/local/bin/eonluxos-window-fit.sh >/dev/null 2>&1 &
 fi
 
-# 5. Garante que o papel de parede e paineis estejam renderizados antes de fechar o Plymouth
+# 6. Garante que o papel de parede e paineis estejam renderizados
 xfdesktop --reload >/dev/null 2>&1 || true
-sleep 2
 
 if command -v plymouth >/dev/null 2>&1; then
     plymouth quit 2>/dev/null || true
