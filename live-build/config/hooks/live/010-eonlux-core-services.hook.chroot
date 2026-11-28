@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "[EonLux Legacy] Aplicando configurações de idioma, memória e otimização de serviços..."
+
+# 1. Garante geração e definição do idioma PT-BR
+sed -i 's/^# *pt_BR.UTF-8 UTF-8/pt_BR.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+update-locale LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8
+
+# 2. Habilita serviços essenciais de memória
+systemctl enable zramswap.service || true
+systemctl enable earlyoom.service || true
+
+# 3. Desativa e mascara serviços pesados ou ociosos em segundo plano
+SERVICOS_DESATIVAR=(
+    "cups.service"
+    "cups-browsed.service"
+    "avahi-daemon.service"
+    "avahi-daemon.socket"
+    "ModemManager.service"
+    "apt-daily.timer"
+    "apt-daily-upgrade.timer"
+)
+
+for servico in "${SERVICOS_DESATIVAR[@]}"; do
+    systemctl disable "$servico" 2>/dev/null || true
+    systemctl mask "$servico" 2>/dev/null || true
+done
+
+# 4. Desativa indexador de arquivos de usuário (tracker) globalmente caso presente
+if [ -d /etc/xdg/autostart ]; then
+    for tracker_file in /etc/xdg/autostart/tracker-*.desktop; do
+        if [ -f "$tracker_file" ]; then
+            echo "Hidden=true" >> "$tracker_file"
+        fi
+    done
+fi
+
+echo "[EonLux Legacy] Otimização base concluída com sucesso."
