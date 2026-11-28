@@ -1,0 +1,40 @@
+# Ambiente Gráfico XFCE Base
+xfce4
+xfce4-goodies
+xfce4-terminal
+lightdm
+lightdm-gtk-greeter
+xorg
+xserver-xorg-input-libinput
+
+# Localização PT-BR
+locales
+task-brazilian-portuguese
+task-brazilian-portuguese-desktop
+
+# Gerenciamento de Arquivos, Compactação e Nuvem
+thunar
+thunar-volman
+thunar-archive-plugin
+gvfs
+gvfs-backends
+gvfs-fuse
+xarchiver
+zip
+unzip
+p7zip-full
+unrar-free
+xz-utils
+rclone
+fuse3
+
+# Aplicativos Essenciais e Fontes
+firefox-esr
+firefox-esr-l10n-pt-br
+ristretto
+mousepad
+xfce4-screenshooter
+network-manager-gnome
+fonts-inter
+fonts-noto-core
+fonts-noto-color-emoji
