@@ -1,0 +1,6 @@
+# Configuração de ZRAM para o EonLux Legacy
+# Aloca 75% da RAM física com compressão rápida lz4
+
+ALGO=lz4
+PERCENT=75
+PRIORITY=100
