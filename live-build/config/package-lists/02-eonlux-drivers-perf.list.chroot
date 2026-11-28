@@ -1,0 +1,31 @@
+# Firmwares e Microcodes
+firmware-linux
+firmware-linux-nonfree
+intel-microcode
+amd64-microcode
+
+# Rede Sem Fio e Bluetooth
+wpasupplicant
+wireless-tools
+broadcom-sta-dkms
+bluez
+blueman
+
+# Áudio Moderno (PipeWire)
+pipewire
+wireplumber
+pipewire-pulse
+pipewire-alsa
+firmware-sof-signed
+pavucontrol
+
+# Vídeo, Energia e Sensores
+xserver-xorg-video-all
+mesa-utils
+lm-sensors
+acpi
+upower
+
+# Engenharia de Memória
+zram-tools
+earlyoom
