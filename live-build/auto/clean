@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
+# Limpa os artefatos temporários de build mantendo cache e configurações
+lb clean noauto "${@}"
+rm -f build.log
