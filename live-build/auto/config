@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+# Configuração oficial do live-build para o EonLux Legacy
+# Base: Debian 13 (Trixie) | Arquitetura: amd64 | Boot: Híbrido (BIOS Legacy + UEFI)
+
+lb config noauto \
+  --mode debian \
+  --distribution trixie \
+  --architectures amd64 \
+  --archive-areas "main contrib non-free non-free-firmware" \
+  --binary-images iso-hybrid \
+  --bootloaders "syslinux,grub-efi" \
+  --debian-installer none \
+  --iso-application "EonLux Legacy" \
+  --iso-publisher "EonLux Project" \
+  --iso-volume "EonLux-Legacy" \
+  --linux-packages "linux-image" \
+  --memtest none \
+  --security true \
+  --updates true \
+  --backports false \
+  --bootappend-live "boot=live components locales=pt_BR.UTF-8 keyboard-layouts=br keyboard-model=abnt2 quiet splash" \
+  "${@}"
