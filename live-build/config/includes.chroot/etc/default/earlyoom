@@ -1,0 +1,4 @@
+# Configuração do daemon earlyoom para proteção contra travamentos em baixa RAM
+# Atua quando a RAM livre cai abaixo de 5% e o Swap abaixo de 10%
+
+EARLYOOM_ARGS="-r 60 -m 5 -s 10 --avoid '(^|/)(init|systemd|Xorg|xfwm4|xfce4-panel|lightdm)$'"
