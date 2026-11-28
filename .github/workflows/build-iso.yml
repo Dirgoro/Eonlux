@@ -1,0 +1,106 @@
+name: Build EonLux Legacy ISO
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Versão da imagem ISO (ex: v0.1-alpha)'
+        required: true
+        default: 'v0.1-alpha'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-build:
+    name: Validar Scripts e Compilar ISO Debian 13 (amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: 1. Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Liberar espaço em disco no runner do GitHub
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          df -h
+
+      - name: 3. Validar sintaxe dos scripts Shell e Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3
+
+          echo "Verificando scripts shell em live-build/..."
+          find live-build -type f \( -path "*/auto/*" -o -name "*.hook.chroot" -o -name "*.hook.binary" -o -name "*.sh" \) | while read -r script; do
+            echo "Checando: $script"
+            bash -n "$script"
+            shellcheck -s bash "$script" || true
+          done
+
+          echo "Verificando sintaxe de scripts Python (se existirem)..."
+          find live-build -type f -name "*.py" | while read -r pyfile; do
+            echo "Checando Python: $pyfile"
+            python3 -m py_compile "$pyfile"
+          done
+
+      - name: 4. Compilar ISO dentro de ambiente Debian 13 (Trixie)
+        env:
+          ISO_VERSION: ${{ inputs.release_version || 'v0.1-alpha' }}
+        run: |
+          docker run --rm --privileged \
+            -v "${{ github.workspace }}:/workspace" \
+            -e ISO_VERSION="$ISO_VERSION" \
+            debian:trixie \
+            bash -euo pipefail -c '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                live-build \
+                debootstrap \
+                squashfs-tools \
+                xorriso \
+                grub-pc-bin \
+                grub-efi-amd64-bin \
+                syslinux-common \
+                isolinux \
+                mtools \
+                dosfstools \
+                ca-certificates
+
+              cd /workspace/live-build
+
+              # Garante permissão de execução nos scripts criados via navegador
+              chmod +x auto/config auto/build auto/clean
+              find config/hooks -type f -exec chmod +x {} + 2>/dev/null || true
+              find config/includes.chroot/usr/local/bin -type f -exec chmod +x {} + 2>/dev/null || true
+
+              # Limpa qualquer resquício, configura e constrói a ISO
+              lb clean --purge || true
+              lb config
+              lb build
+
+              # Renomeia a ISO gerada e calcula o SHA256
+              ISO_ORIG=$(ls -1 *.hybrid.iso 2>/dev/null | head -n 1 || true)
+              if [ -z "$ISO_ORIG" ]; then
+                echo "ERRO: Nenhuma imagem .hybrid.iso foi gerada!"
+                exit 1
+              fi
+
+              ISO_FINAL="eonlux-legacy-${ISO_VERSION}-amd64.iso"
+              mv "$ISO_ORIG" "/workspace/$ISO_FINAL"
+              cd /workspace
+              sha256sum "$ISO_FINAL" > "${ISO_FINAL}.sha256"
+              ls -lh "$ISO_FINAL" "${ISO_FINAL}.sha256"
+            '
+
+      - name: 5. Disponibilizar ISO e SHA256 para Download (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: eonlux-legacy-iso-${{ inputs.release_version || 'v0.1-alpha' }}
+          path: |
+            eonlux-legacy-*.iso
+            eonlux-legacy-*.iso.sha256
+          retention-days: 14
